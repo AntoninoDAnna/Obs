@@ -39,7 +39,7 @@ function v_imp(vv,vt...;cv, L=1, theta1,theta2, bnd::Boundary=open)
         error("[v_imp]: unexpected number of tensor current correlators")
     end
 
-    v1t12, v1t13, v2t12,v2t23, v3t13,v3t23 = [v for vt in v[2:end]]
+    v1t12, v1t13, v2t12,v2t23, v3t13,v3t23 = [v for v in vt[2:end]]
     aux = -sin(p[1]).*(v2t12.+v3t13).+sin(p[2]).*(v1t12.-v3t23)+sin(p[3]).*(v1t13+v2t23)
 
     return imp .-2cv*aux
@@ -76,12 +76,12 @@ Improve the correlator G_{PA_0} according to the equation
 
 See also [`sym_der`](@ref), [`Boundary`](@ref)
 """
-function pa0_imp(pa0, pp; ca, bdn::Boundary=open)
+function pa0_imp(pa0, pp; ca, bnd::Boundary=open)
     der_p=sym_der(pp,bnd)
-    return corr_pa0.-ca.*der_p
+    return pa0.-ca.*der_p
 end
 
-function pa0_imp(pa0::juobs.Corr, pp::juobs.Corr; ca,  bdn::Boundary=open)
+function pa0_imp(pa0::juobs.Corr, pp::juobs.Corr; ca,  bnd::Boundary=open)
     check_corr(pa0, pp,flag=no_gamma)
     imp = if bnd == open
         pa0_imp(pa0.obs[2:end-1],pp.obs[2:end-1],ca=ca, bnd=bnd)
@@ -92,8 +92,8 @@ function pa0_imp(pa0::juobs.Corr, pp::juobs.Corr; ca,  bdn::Boundary=open)
 end
 
 @doc """
-    a0a0_imp(a0a0,pa0; ca,  bdn::Boundary=open)
-    a0a0_imp(a0a0::juobs.Corr,pa0::juobs.Corr; ca,  bdn::Boundary=open)::juobs.Corr
+    a0a0_imp(a0a0,pa0; ca,  bnd::Boundary=open)
+    a0a0_imp(a0a0::juobs.Corr,pa0::juobs.Corr; ca,  bnd::Boundary=open)::juobs.Corr
 
 Improve the correlator G_{A_0 A_0} according to the equation
 ```math
@@ -105,12 +105,12 @@ Improve the correlator G_{A_0 A_0} according to the equation
 
 See also [`sym_der`](@ref), [`Boundary`](@ref)
 """
-function a0a0_imp(a0a0, pa0; ca, bdn::Boundary=open)
+function a0a0_imp(a0a0, pa0; ca, bnd::Boundary=open)
     der_pa0 = sym_der(pa0,bnd)
     return a0a0 .- (2*ca).*der_pa0
 end
 
-function a0a0_imp(a0a0::juobs.Corr, pa0::juobs.Corr; ca,  bdn::Boundary=open)
+function a0a0_imp(a0a0::juobs.Corr, pa0::juobs.Corr; ca,  bnd::Boundary=open)
     check_corr(a0a0, pa0,no_gamma)
     imp = if bnd == open
         a0a0_imp(a0a0.obs[2:end-1],pa0.obs[2:end-1],ca=ca, bnd=bnd)
@@ -144,8 +144,8 @@ Compute the improved G_{PV} =  1/3 \\sum_{k=1}^3G_{PV_i} correlator according to
 
 See also [`sym_der`](@ref), [`Boundary`](@ref)
 """
-function pv_imp(pv,pt...;cv,L::Int64=1,theta1, theta2, bnd::Boundary = open)
-    der_pt = der_sym(pt[1])
+function pv_imp(pv,pt...; cv,L::Int64=1,theta1, theta2, bnd::Boundary = open)
+    der_pt = sym_der(pt[1],bnd)
 
     p = (theta1.-theta2)./L
     if all(p.==0) || all(p[2:end].==p[1])
@@ -157,10 +157,10 @@ function pv_imp(pv,pt...;cv,L::Int64=1,theta1, theta2, bnd::Boundary = open)
 
     pt12, pt13, pt23 = pt[2:end]
     aux  = -sin(p[1])*(pt12+pt13)
-    aux +=  sin(p[2])*(p12-p23)
+    aux +=  sin(p[2])*(pt12-pt23)
     aux +=  sin(p[3])*(pt13-pt23)
 
-    return pv .-cv *der_vt .- cv*aux./3
+    return pv .-cv *der_pt .- cv*aux./3
 end
 
 function pv_imp(pv::juobs.Corr, pt::juobs.Corr...; cv, L=1, theta1=Float64[],theta2 = Float64[], bnd::Boundary=open)
