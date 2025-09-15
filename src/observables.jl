@@ -13,15 +13,11 @@ If `a0p` and/or `pp` are `juobs.Corr`, then according to `bnd` the code uses:
      This because in OBC  the first and last component lay on the boundary and are `0`
    - `bnd == periodic`: the `obs` field without modification
 
+See also [`sym_der`](@ref), [`Boundary`](@ref), [`pa0_imp`](@ref)
 """
 function mpcac(a0p,pp,bnd::Boundary=open)
     der_a0p = sym_der(a0p,bnd)
     return -der_a0p./(2 .*pp);
-end
-
-function mpcac(a0p,pp,ca,bnd::Boundary=open)
-    der_pp =sym_der(pp,bnd)
-    return mpcac(a0p.-ca.*der_pp, pp,bnd)
 end
 
 function mpcac(a0p::juobs.Corr,pp::juobs.Corr,bnd::Boundary = open)
@@ -32,13 +28,7 @@ function mpcac(a0p::juobs.Corr,pp::juobs.Corr,bnd::Boundary = open)
     end
 end
 
-function mpcac(a0p::juobs.Corr,pp::juobs.Corr,ca,bnd::Boundary = open)
-    if bnd == open
-        return mpcac(a0p.obs[2:end-1], pp.obs[2:end-1],ca,bnd)
-    elseif bnd == periodic
-        return mpcac(a0p.obs,pp.obs,ca,bnd)
-    end
-end
+mpcac(a0p,pp,ca,bnd::Boundary=open) = mpcac(pa0_imp(a0p,pp,ca=ca, bnd=bnd),pp, bnd)
 
 @doc raw"""
      meff(v,bnd::Boundary=open)
@@ -67,8 +57,6 @@ function meff(v::juobs.Corr,bnd::Boundary=open)
         return meff(v.obs,bnd)
     end
 end
-
-
 
 @doc raw"""
     RI(HtoL, H, L, EL, EH; xsink, xsrc)

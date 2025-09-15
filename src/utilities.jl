@@ -66,6 +66,7 @@ sym_source(corr::juobs.Corr, parity, bnd::Boundary) = sym_source(corr,corr.y0,pa
 
 check that all correlator are compatible. Use flag to ignore specific fields
 
+See also [`Check_flag`](@ref)
 """
 function check_corr(c::juobs.Corr...; flag::Check_flag)
     fields =let
@@ -105,6 +106,7 @@ correlator has gamma structure `G1,G2,G3`.
 #TODO: if `flags` is something different that `no_gamma`, the correlators will
 be averaged correctly but other informations will be lost (`:kappa`, `:mu`, ecc...)
 
+See also [`Check_corr`](@ref), [`Check_flag`](@ref)
 """
 function average_corr(x::juobs.Corr...;flag::Check_flag = no_gamma)
     check_corr(x..., flag = flag)
@@ -126,7 +128,7 @@ function average_corr(x::juobs.Corr...;flag::Check_flag = no_gamma)
     else
         join([g[2] for g in gamma],",")
     end
-    # No = length(obs[1]);
+
     mean = reduce(+,obs)/Nc
     return  juobs.Corr(mean,x[1].kappa,x[1].mu, [G1,G2],x[1].y0,x[1].theta1,x[2].theta2)
 end
