@@ -2,3 +2,9 @@ name = "Obs"
 uuid = "34d5995e-0b99-478d-8e2c-ce4e143535f7"
 authors = ["Antonino DAnna <antonino.danna@estudiante.uam.es>"]
 version = "0.1.0"
+
+[deps]
+ADerrors = "5e92007d-7bf1-471c-8ceb-4591b8b567a9"
+BDIO = "375f315e-f2c4-11e9-2ef9-134f02f79e27"
+BitFlags = "d1d4a3ce-64b1-5f1a-9ba4-7e7e69966f35"
+juobs = "3399d769-80ea-4938-a2f8-b7fb0ead32c9"

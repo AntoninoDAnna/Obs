@@ -2,7 +2,7 @@ module Obs
 import juobs
 using BitFlags
 
-include("enums.jl")
+include("enum.jl")
 include("utilities.jl")
 include("improvements.jl")
 include("observables.jl")

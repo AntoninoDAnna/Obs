@@ -116,9 +116,9 @@ function a0a0_imp(a0a0::juobs.Corr, pa0::juobs.Corr; ca,  bdn::Boundary=open)
         a0a0_imp(a0a0.obs[2:end-1],pa0.obs[2:end-1],ca=ca, bnd=bnd)
     elseif bnd==periodic
         a0a0_imp(a0a0.obs,pa0.obs,ca=ca, bnd=bnd)
-    return juobs.Corr(imp,pa0.kappa,pa0.mu,pa0.gamma, pa0.y0,pa0.theta1,pa0.theta2)
+        return juobs.Corr(imp,pa0.kappa,pa0.mu,pa0.gamma, pa0.y0,pa0.theta1,pa0.theta2)
+    end
 end
-
 
 @doc """
      pv_imp(pv,pt...;cv,L::Int64=1,theta1, theta2, bnd::Boundary = open)
@@ -165,7 +165,7 @@ end
 
 function pv_imp(pv::juobs.Corr, pt::juobs.Corr...; cv, L=1, theta1=Float64[],theta2 = Float64[], bnd::Boundary=open)
     check_corr(pv,pt...,no_gamma)
-        if isempty(theta1)
+    if isempty(theta1)
         theta1 = pv.theta1
     end
     if isempty(theta2)
