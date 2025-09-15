@@ -4,7 +4,8 @@ import juobs, ADerrors
      v_imp(vv,vt...;cv, L=1, theta1,theta2, bnd::Boundary=open)
      v_imp(vv::juobs.Corr,vt::juobs.Corr...;cv,L=1, theta1=Float64[],theta2=Float64[], bnd::Boundary=open)
 
-Compute the improved G_{VV} =  \sum_{k=1}^3G_{V_iV_i} correlator according to the equations
+Compute the improved G_{VV} =  \sum_{k=1}^3G_{V_iV_i} correlator according to the
+equations
 ```math
     G^I_{V_iV_i} = G_{V_i V_i} + 2ac_V \de_t G_{V_i T_i0} - 2c_V \sum_{j=1}^{3} i \sin(p^j a) G_{V_i T_ij}
 ```
@@ -22,8 +23,9 @@ Compute the improved G_{VV} =  \sum_{k=1}^3G_{V_iV_i} correlator according to th
   - `theta1=Float64[]`: theta angle of the first quark. If empty, is read from `vv`
   - `theta2=Float64[]`: theta angles of the second quark. If empty, is read from `vv`
   - `bnd` : Boundary condition of the lattice. Used to compute the derivatives
-"""
 
+See also [`sym_der`](@ref), [`Boundary`](@ref)
+"""
 function v_imp(vv,vt...;cv, L=1, theta1,theta2, bnd::Boundary=open)
     der_vt = sym_der(vt[1],bnd)
     imp = vv.-2cv*der_vt
@@ -71,6 +73,8 @@ Improve the correlator G_{PA_0} according to the equation
 # Keyword Arguments
   - `ca`: mandatory keyword argument. It is the improved operator [See also `ca_fit`]
   - `bnd` : Boundary condition of the lattice. Used to compute the derivatives
+
+See also [`sym_der`](@ref), [`Boundary`](@ref)
 """
 function pa0_imp(pa0, pp; ca, bdn::Boundary=open)
     der_p=sym_der(pp,bnd)
@@ -98,6 +102,8 @@ Improve the correlator G_{A_0 A_0} according to the equation
 # Keyword Arguments
   - `ca`: mandatory keyword argument. It is the improved operator [See also `ca_fit`]
   - `bnd` : Boundary condition of the lattice. Used to compute the derivatives
+
+See also [`sym_der`](@ref), [`Boundary`](@ref)
 """
 function a0a0_imp(a0a0, pa0; ca, bdn::Boundary=open)
     der_pa0 = sym_der(pa0,bnd)
@@ -135,6 +141,8 @@ Compute the improved G_{PV} =  1/3 \\sum_{k=1}^3G_{PV_i} correlator according to
   - `theta1=Float64[]`: theta angle of the first quark. If empty, is read from `pv`
   - `theta2=Float64[]`: theta angles of the second quark. If empty, is read from `pv`
   - `bnd` : Boundary condition of the lattice. Used to compute the derivatives
+
+See also [`sym_der`](@ref), [`Boundary`](@ref)
 """
 function pv_imp(pv,pt...;cv,L::Int64=1,theta1, theta2, bnd::Boundary = open)
     der_pt = der_sym(pt[1])
@@ -172,30 +180,42 @@ function pv_imp(pv::juobs.Corr, pt::juobs.Corr...; cv, L=1, theta1=Float64[],the
 end
 
 @doc raw"""
-    pv0_imp(corr_pv0::Vector{ADerrors.uwreal}, corr_pt::Vector{ADerrors.uwreal}...;theta1::Vector{Float64},theta2::Vector{Float64}, cv,L::Int64)
+     pv0_imp(pv0, pt...; theta1,theta2, cv,L::Int64=1, bnd::Boundary=open)
+     pv0_imp(pv0::juobs.Corr,pt::juobs.Corr ...;cv,L=1,theta1 = Float64[], theta2 = Float64[], bnd::Boundary=open)::juobs.Corr
 
-  Improve the correlator G_PV0 and G_PPV0 with the tensor correlator according to the improvement equation
+Improve the correlator G_PV0 and G_PV0 with the tensor correlator according to the improvement equation
 
+```math
     V_0^I(t,\vec p) = V_0(t,\vec p) - c_V \sum_{k=1}^3 i sin(ap^k) T_{0k}(t,\vec p)
+```
 
-  # Keyword Arguments
-  - cv : improvement factor. Can be a Real number or an uwreal
-  - L::Int64 : spatial extend of the lattice. It is used to convert the \theta angle into momentum in lattice unit
-  - theta1::Vector{Float64}, theta2::Vector{Float64}: theta Boundary conditions used to inject momentum in the propagator
 
-  # Return type
-   `Vector{ADerrors.uwreal}` similar to `corr_pv0`
-  """
-function pv0_imp(pv0::Vector{ADerrors.uwreal}, pt::Vector{ADerrors.uwreal}...; theta1::Vector{Float64},theta2::Vector{Float64}, cv,L::Int64=1, OBC::Bool=true)
-    if length(pt) !=3
-        error("[pv0_imp] unexpected number of tensor current correlator")
-    end
+# Arguments
+  - pvo: correlator G_{PV0}
+  - pt: correlators G_{PT}. It contains the correlator G_{PT01}, G_{PT02}, G_{PT03}
+
+# Keyword Arguments
+  - `cv`: mandatory keyword argument. It is the improvement coefficient
+  - `L::Int64=1`: Lattice size. Needed to convert the theta angle into momenta.
+  - `theta1=Float64[]`: theta angle of the first quark. If empty, is read from `pv`
+  - `theta2=Float64[]`: theta angles of the second quark. If empty, is read from `pv`
+  - `bnd` : Boundary condition of the lattice. Used to compute the derivatives
+
+See also [`sym_der`](@ref), [`Boundary`](@ref)
+"""
+function pv0_imp(pv0, pt...; theta1,theta2, cv,L::Int64=1, bnd::Boundary=open)
     p = (theta1.-theta2)./L
+
     if all(p.==0)
         return pv0
     end
+
+    if length(pt) !=3
+        error("[pv0_imp] unexpected number of tensor current correlator")
+    end
+
     dsin = sin.(p)
-    aux = reduce(+,[dsin[i].*pt[i] for i in 1:3])
+    aux = sin(p[1])*pt[1]+sin(p[2])*pt[2]+sin(p[3])*pt[3]
     return pv0.-cv.*aux
 end
 
