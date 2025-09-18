@@ -128,8 +128,8 @@ If `pa0` and `pp` are a `juobs.Corr`, `y0` can be omitted and it will take the s
 """
 function ps_dec(pa0,pp,mps,y0)
     R= pa0./sqrt.(abs.(pp))
-    e = exp.(0.5*mps.*[i-y0 for i in 1:lastindex(pa0)])
-    return (sqrt(2/mps)).*R.*e
+    e = exp.(0.5*abs.(mps).*[abs(i-y0) for i in 1:lastindex(pa0)])
+    return sqrt.(2 ./abs.(mps)).*R.*e
 end
 
 function ps_dec(pa0::juobs.Corr,pp::juobs.Corr,mps,y0=0)
@@ -150,14 +150,14 @@ It computes the effective decay constant associated to the correlator `c`.
 If `c` is a `juobs.Corr`, `y0` can be omitted and it will take the source position in `c`
 """
 function dec(c,m,y0)
-    e = exp.(0.5*m.*[i-y0 for i in 1:lastindex(c)])
-    return sqrt(2/m).*sqrt.(abs.(c)).*e
+    e = exp.(0.5*abs.(m).*[abs(i-y0) for i in 1:lastindex(c)])
+    return sqrt.(2 ./abs.(m)).*sqrt.(abs.(c)).*e
 end
 
 function dec(c::juobs.Corr,m,y0=0)
     if y0==0
-        return dec(vv.obs[2:end-1],mvec,vv.y0)
+        return dec(c.obs[2:end-1],m,c.y0)
     else
-        return dec(vv.obs[2:end-1],mvec,y0)
+        return dec(c.obs[2:end-1],m,c.y0)
     end
 end

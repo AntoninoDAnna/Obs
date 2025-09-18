@@ -46,7 +46,7 @@ function sym_source(corr, y0, parity, bnd::Boundary)
             res[i] = 0.5*( corr[(y0+i-1)%T] + corr[(y0-i+1)%T] )
         end
     end
-    return sym_obs
+    return res
 end
 
 function sym_source(corr::juobs.Corr,y0,parity,bnd::Boundary)
@@ -106,17 +106,12 @@ correlator has gamma structure `G1,G2,G3`.
 #TODO: if `flags` is something different that `no_gamma`, the correlators will
 be averaged correctly but other informations will be lost (`:kappa`, `:mu`, ecc...)
 
-See also [`Check_corr`](@ref), [`Check_flag`](@ref)
+See also [`check_corr`](@ref), [`Check_flag`](@ref)
 """
 function average_corr(x::juobs.Corr...;flag::Check_flag = no_gamma)
     check_corr(x..., flag = flag)
     Nc = length(x)
     obs = getfield.(x,:obs)
-    y0 = x[1].y0;
-    k = x[1].kappa
-    mu = x[1].mu
-    th1 = x[1].theta1
-    th2 = x[1].theta2
     gamma = getfield.(x,:gamma)
     G1 = if all(x->x[1]==gamma[1][1], gamma[2:end])
         gamma[1][1]
