@@ -38,7 +38,7 @@ See also [`Boundary`](@ref)
 function sym_source(corr, y0, parity, bnd::Boundary)
     T = lastindex(corr)
     if bnd == open
-        is,ie =  ((T-1)>2y0) ? (2y0,1) : (T,2y0-T+1)
+        ie,is =  (T>2y0) ? (2y0-1,1) : (T,2y0-T)
         res = 0.5.*(corr[y0:ie] .+ parity*corr[y0:-1:is])
     elseif bnd ==periodic
         res = zeros(typeof(corr[1]),div(T,2))
