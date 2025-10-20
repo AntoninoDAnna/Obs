@@ -103,16 +103,16 @@ end
 for f in (:RI, :RII, :RIII)
     @eval function $(f)(HtoL::juobs.Corr,H::juobs.Corr,L::juobs.Corr,EL,EH;xsnk::Int64)
         if HtoL.theta1 != L.theta1
-            error("[$f] theta mismatch. thetas: $(HtoL.theta1) and $(L.theta1)")
+            error("[$(f)] theta mismatch. thetas: $(HtoL.theta1) and $(L.theta1)")
         end
         if HtoL.kappa[2] != H.kappa[1]
-            error("[$f] heavy mass mismatch.  masses $(HtoL.kappa[2]) and $(H.kappa[1])")
+            error("[$(f)] heavy mass mismatch.  masses $(HtoL.kappa[2]) and $(H.kappa[1])")
         end
         if HtoL.kappa[1] != H.kappa[2] !=L.kappa[1]
-            error("[$f] light mass mismatch.  masses $(HtoL.kappa[2]), $(H.kappa[1]) and $(L.kappa[1])")
+            error("[$(f)] light mass mismatch.  masses $(HtoL.kappa[2]), $(H.kappa[1]) and $(L.kappa[1])")
         end
         if HtoL.y0 != H.y0 != L.y0
-            error("[$f] source position mismatch. sources at $(HtoL.y0), $(H.y0) and $(L.y0)")
+            error("[$(f)] source position mismatch. sources at $(HtoL.y0), $(H.y0) and $(L.y0)")
         end
         return $(f)(HtoL.obs[2:end-1],H.obs[2:end-1],L.obs[2:end-1],EL,EH,xsnk = xsnk, xsrc = HtoL.y0)
     end
