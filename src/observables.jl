@@ -95,7 +95,7 @@ Compute the matrix element associated to the semileptonic decay `H -> L` using t
 ```
 """
 function RIII(HtoL,H, L, EL,EH;xsnk::Int64,xsrc::Int64)
-    R = HtoL[xsrc:xsnk] ./sqrt(H[xsnk]*L[xsnk])
+    R = HtoL[xsrc:xsnk] ./sqrt(abs(H[xsnk]*L[xsnk]))
     aux2 = [exp(0.5*(EH-EL)*(xsnk-2*x+xsrc)) for x in xsrc:xsnk]
     return sqrt(2*EL).*abs.(R) .*aux2
 end

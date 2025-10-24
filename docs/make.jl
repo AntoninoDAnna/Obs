@@ -9,7 +9,7 @@ makedocs(sitename = "Obs Documentation", doctest=true,
 		      "Observables" =>  "obs.md",
 		      "Utilities" => "utilities.md"],
 	 format = Documenter.HTML(repolink = "https://github.com/AntoninoDAnna/Obs.gi",
-                                  prettyurls=false))
+                                  rettyurls=false))
 
 
 
