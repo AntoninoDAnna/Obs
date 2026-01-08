@@ -51,7 +51,7 @@ end
 
 function sym_source(corr::juobs.Corr,y0,parity,bnd::Boundary)
     obs = if bnd == open
-       sym_source(corr.obs[2:end-1],y0,parity,bnd)
+        sym_source(corr.obs[2:end-1],y0,parity,bnd)
     elseif bnd == periodic
         sym_source(corr.obs,y0,parity,bnd)
     end
@@ -127,3 +127,20 @@ function average_corr(x::juobs.Corr...;flag::Check_flag = no_gamma)
     mean = reduce(+,obs)/Nc
     return  juobs.Corr(mean,x[1].kappa,x[1].mu, [G1,G2],x[1].y0,x[1].theta1,x[2].theta2)
 end
+
+
+@doc raw"""
+    plat_av(obs::T where {T<:AbstractVector} ,W::AbstractVecOrMat{<:Real})
+
+Compute the plateau average of `obs`. If `W` is an `AbstractVector`, then the
+plateau average correspond to the analytic solution of an uncorrelated
+fit with a constant function, if `W` is a `AbstractMatrix`, then the plateau
+average correspond to the analytic solution of a correlated fit with a
+constant function.
+
+"""
+plat_av(obs::T where {T<:AbstractVector}, W::AbstractMatrix{<:Real}) =
+    sum(obs[i]*W[i,j] for i in axes(W,1), j in axes(W,2))/sum(W)
+
+plat_av(obs::T where {T<:AbstractVector}, W::AbstractVector{<:Real}) =
+    sum(W.*obs)/sum(W)
