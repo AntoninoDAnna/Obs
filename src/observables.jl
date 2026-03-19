@@ -8,7 +8,7 @@ It uses the symmetryc derivatives where necessary.
 
 ## Output specifics
 
-If `a0p` and/or `pp` are `juobs.Corr`, then according to `bnd` the code uses:
+If `a0p` and/or `pp` are `AbstractCorr`, then according to `bnd` the code uses:
    - `bnd == open`: the `obs` field where it strips the first and last component.
      This because in OBC  the first and last component lay on the boundary and are `0`
    - `bnd == periodic`: the `obs` field without modification
@@ -20,7 +20,7 @@ function mpcac(a0p,pp,bnd::Boundary=open)
     return -der_a0p./(2 .*pp);
 end
 
-function mpcac(a0p::juobs.Corr,pp::juobs.Corr,bnd::Boundary = open)
+function mpcac(a0p::AbstractCorr,pp::AbstractCorr,bnd::Boundary = open)
     if bnd == open
         return mpcac(a0p.obs[2:end-1], pp.obs[2:end-1],bnd)
     elseif bnd == periodic
@@ -50,7 +50,7 @@ function meff(v,bnd::Boundary=open)
     end
 end
 
-function meff(v::juobs.Corr,bnd::Boundary=open)
+function meff(v::AbstractCorr,bnd::Boundary=open)
     if bnd == open
         return meff(v.obs[2:end-1],bnd)
     elseif bnd == periodic
@@ -101,7 +101,7 @@ function RIII(HtoL,H, L, EL,EH;xsnk::Int64,xsrc::Int64)
 end
 
 for f in (:RI, :RII, :RIII)
-    @eval function $(f)(HtoL::juobs.Corr,H::juobs.Corr,L::juobs.Corr,EL,EH;xsnk::Int64)
+    @eval function $(f)(HtoL::AbstractCorr,H::AbstractCorr,L::AbstractCorr,EL,EH;xsnk::Int64)
         if HtoL.theta1 != L.theta1
             error("[$(f)] theta mismatch. thetas: $(HtoL.theta1) and $(L.theta1)")
         end
@@ -124,7 +124,7 @@ end
 It computes the effective pseudoscalar decay constant associated to the correlator `pa0` and `pp`.
 `mps` is the pseudoscalar mass and y0 is the source position.
 
-If `pa0` and `pp` are a `juobs.Corr`, `y0` can be omitted and it will take the source position in `pa0`
+If `pa0` and `pp` are a `AbstractCorr`, `y0` can be omitted and it will take the source position in `pa0`
 """
 function ps_dec(pa0,pp,mps,y0)
     R= pa0./sqrt.(abs.(pp))
@@ -132,7 +132,7 @@ function ps_dec(pa0,pp,mps,y0)
     return sqrt.(2 ./abs.(mps)).*R.*e
 end
 
-function ps_dec(pa0::juobs.Corr,pp::juobs.Corr,mps,y0=0)
+function ps_dec(pa0::AbstractCorr,pp::AbstractCorr,mps,y0=0)
     check_corr(pa0,pp,flag=no_gamma)
     if y0==0
         return ps_dec(pa0.obs[2:end-1],pp.obs[2:end-1],mps,pa0.y0)
@@ -147,14 +147,14 @@ end
 It computes the effective decay constant associated to the correlator `c`.
 `m` is the mass associated to it and `y0` the source position.
 
-If `c` is a `juobs.Corr`, `y0` can be omitted and it will take the source position in `c`
+If `c` is a `AbstractCorr`, `y0` can be omitted and it will take the source position in `c`
 """
 function dec(c,m,y0)
     e = exp.(0.5*abs.(m).*[abs(i-y0) for i in 1:lastindex(c)])
     return sqrt.(2 ./abs.(m)).*sqrt.(abs.(c)).*e
 end
 
-function dec(c::juobs.Corr,m,y0=0)
+function dec(c::AbstractCorr,m,y0=0)
     if y0==0
         return dec(c.obs[2:end-1],m,c.y0)
     else

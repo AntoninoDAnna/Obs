@@ -55,26 +55,27 @@ function sym_source(corr, y0, parity, bnd::Boundary)
     return res
 end
 
-function sym_source(corr::juobs.Corr,y0,parity,bnd::Boundary)
+function sym_source(corr::AbstractCorr,y0,parity,bnd::Boundary)
     obs = if bnd == open
         sym_source(corr.obs[2:end-1],y0,parity,bnd)
     elseif bnd == periodic
         sym_source(corr.obs,y0,parity,bnd)
     end
-    return juobs.Corr(obs,corr.kappa,corr.mu,corr.gamma,0,corr.theta1,corr.theta2)
+    return ObsIO.__update__(corr,obs=obs)
 end
 
-sym_source(corr::juobs.Corr, parity, bnd::Boundary) = sym_source(corr,corr.y0,parity,bnd)
+sym_source(corr::AbstractCorr, parity, bnd::Boundary) = sym_source(corr,ObsIO.src(corr),
+                                                                   parity,bnd)
 
 
 @doc """
-     check_corr(c::juobs.Corr...; flag::Check_flag)
+     check_corr(c::AbstractCorr...; flag::Check_flag)
 
 check that all correlator are compatible. Use flag to ignore specific fields
 
 See also [`Check_flag`](@ref)
 """
-function check_corr(c::juobs.Corr...; flag::Check_flag)
+function check_corr(c::AbstractCorr...; flag::Check_flag)
     fields =let
         aux =(flag .& instances(Check_flag)[2:end] .==no_flag) |> collect # remove no_flag and no_thetas
         [:gamma, :obs, :kappa, :mu, :y0, :theta1, :theta2][aux]
@@ -114,24 +115,24 @@ be averaged correctly but other informations will be lost (`:kappa`, `:mu`, ecc.
 
 See also [`check_corr`](@ref), [`Check_flag`](@ref)
 """
-function average_corr(x::juobs.Corr...;flag::Check_flag = no_gamma)
-    check_corr(x..., flag = flag)
+function average_corr(x::AbstractCorr...;flag::Check_flag = no_gamma)
+    # check_corr(x..., flag = flag)
     Nc = length(x)
     obs = getfield.(x,:obs)
-    gamma = getfield.(x,:gamma)
-    G1 = if all(x->x[1]==gamma[1][1], gamma[2:end])
-        gamma[1][1]
-    else
-        join([g[1] for g in gamma],",")
-    end
-    G2 = if all(x->x[2]==gamma[1][2], gamma[2:end])
-        gamma[1][2]
-    else
-        join([g[2] for g in gamma],",")
-    end
+    # gamma = getfield.(x,:gamma)
+    # G1 = if all(x->x[1]==gamma[1][1], gamma[2:end])
+    #     gamma[1][1]
+    # else
+    #     join([g[1] for g in gamma],",")
+    # end
+    # G2 = if all(x->x[2]==gamma[1][2], gamma[2:end])
+    #     gamma[1][2]
+    # else
+    #     join([g[2] for g in gamma],",")
+    # end
 
     mean = reduce(+,obs)/Nc
-    return  juobs.Corr(mean,x[1].kappa,x[1].mu, [G1,G2],x[1].y0,x[1].theta1,x[2].theta2)
+    return  ObsIO.__update__(x[1],obs=obs)
 end
 
 

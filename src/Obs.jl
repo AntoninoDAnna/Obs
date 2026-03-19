@@ -1,6 +1,7 @@
 module Obs
-import juobs
+using ObsIO
 using BitFlags
+using ADerrors
 
 include("enum.jl")
 include("utilities.jl")

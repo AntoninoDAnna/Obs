@@ -22,6 +22,7 @@ let
     Obs.a0a0_imp(pa0_ca,0.5*pp,ca=ca)
     Obs.v_imp(pa0_ca,pp,cv=ca,theta1=zeros(3),theta2=zeros(3))
     Obs.v_imp(pa0_ca,pp,pp,pp,pp,pp,pp,pp,cv=ca,theta1=fill(1/7,3),theta2=zeros(3))
+    nothing
 end
 let
     Obs.mpcac(pa0,pp)
@@ -29,6 +30,23 @@ let
     Obs.mpcac(pa0_ca,pp,ca)
     Obs.ps_dec(pa0,pp,E,0)
     Obs.dec(pa0,E,0)
+    nothing
+end
+
+let
+    pp = Obs.Corr([cP*exp(-E*t) for t in 1:40],
+             (Obs.ObsIO.Propagator(),Obs.ObsIO.Propagator()))
+    pa0 = Obs.Corr([cA0*exp(-E*t) for t in 1:40],
+                   (Obs.ObsIO.Propagator(),Obs.ObsIO.Propagator()))
+    Obs.pa0_imp(pa0,pp,ca=ca);
+    Obs.pv_imp(pa0,pp,cv=ca, theta1 = zeros(3), theta2 = zeros(3));
+    Obs.pv_imp(pa0,pp,pp,pp,pp, cv=ca,theta1 = [2/3,0.0,1/3],theta2 =[0,-1,0])
+    Obs.pv0_imp(pa0,pp,cv=ca,theta1 = zeros(3), theta2=zero(3),bnd=Obs.open)
+    Obs.pv0_imp(pa0,pp,pp,pp,cv=ca,theta1 = fill(1/3,3), theta2=zero(3),bnd=Obs.open)
+    Obs.a0a0_imp(pa0,0.5*pp,ca=ca)
+    Obs.v_imp(pa0,pp,cv=ca,theta1=zeros(3),theta2=zeros(3))
+    Obs.v_imp(pa0,pp,pp,pp,pp,pp,pp,pp,cv=ca,theta1=fill(1/7,3),theta2=zeros(3))
+    nothing
 end
 
 true;

@@ -1,8 +1,6 @@
-import juobs, ADerrors
-
 @doc raw"""
      v_imp(vv,vt...;cv, L=1, theta1,theta2, bnd::Boundary=open)
-     v_imp(vv::juobs.Corr,vt::juobs.Corr...;cv,L=1, theta1=Float64[],theta2=Float64[], bnd::Boundary=open)
+     v_imp(vv::AbstractCorr,vt::AbstractCorr...;cv,L=1, theta1=Float64[],theta2=Float64[], bnd::Boundary=open)
 
 Compute the improved G_{VV} =  \sum_{k=1}^3G_{V_iV_i} correlator according to the
 equations
@@ -45,7 +43,7 @@ function v_imp(vv,vt...;cv, L=1, theta1,theta2, bnd::Boundary=open)
     return imp .-2cv*aux
 end
 
-function v_imp(vv::juobs.Corr,vt::juobs.Corr...;cv,L=1, theta1=Float64[],theta2=Float64[], bnd::Boundary=open)
+function v_imp(vv::AbstractCorr,vt::AbstractCorr...;cv,L=1, theta1=Float64[],theta2=Float64[], bnd::Boundary=open)
     check_corr(vv,vt..., flag = no_gamma)
     vv, vt = if bnd == open
         vv.obs[2:end-1], [x.obs[2:end-1] for x in vt]
@@ -59,12 +57,12 @@ function v_imp(vv::juobs.Corr,vt::juobs.Corr...;cv,L=1, theta1=Float64[],theta2=
         theta2 = vv.theta2
     end
     imp = v_imp(vv,vt..., cv = cv, L=L, theta=theta1, theta2=theta2)
-    return juobs.Corr(imp, vv.kappa,vv.mu, vv.gamma,vv.y0,vv.theta1,vv.theta2)
+    return ObsIO.__update__(vv,obs=imp)
 end
 
 @doc raw"""
     pa0_imp(pa0,pp; ca, bnd::Boundary =open)
-    pa0_imp(pa0::juobs.Corr,pp::juobs.Corr; ca, bnd::Boundary =open)::juobs.Corr
+    pa0_imp(pa0::AbstractCorr,pp::AbstractCorr; ca, bnd::Boundary =open)::AbstractCorr
 
 Improve the correlator G_{PA_0} according to the equation
 ```math
@@ -81,19 +79,19 @@ function pa0_imp(pa0, pp; ca, bnd::Boundary=open)
     return pa0.-ca.*der_p
 end
 
-function pa0_imp(pa0::juobs.Corr, pp::juobs.Corr; ca,  bnd::Boundary=open)
+function pa0_imp(pa0::AbstractCorr, pp::AbstractCorr; ca,  bnd::Boundary=open)
     check_corr(pa0, pp,flag=no_gamma)
     imp = if bnd == open
-        pa0_imp(pa0.obs[2:end-1],pp.obs[2:end-1],ca=ca, bnd=bnd)
+        pa0_mp(pa0.obs[2:end-1],pp.obs[2:end-1],ca=ca, bnd=bnd)
     elseif bnd==periodic
         pa0_imp(pa0.obs,pp.obs,ca=ca, bnd=bnd)
     end
-    return juobs.Corr(imp,pp.kappa,pp.mu,pp.gamma, pp.y0,pp.theta1,pp.theta2)
+    return ObsIO.__update__(pa0,obs=imp)
 end
 
 @doc """
     a0a0_imp(a0a0,pa0; ca,  bnd::Boundary=open)
-    a0a0_imp(a0a0::juobs.Corr,pa0::juobs.Corr; ca,  bnd::Boundary=open)::juobs.Corr
+    a0a0_imp(a0a0::AbstractCorr,pa0::AbstractCorr; ca,  bnd::Boundary=open)::AbstractCorr
 
 Improve the correlator G_{A_0 A_0} according to the equation
 ```math
@@ -110,19 +108,19 @@ function a0a0_imp(a0a0, pa0; ca, bnd::Boundary=open)
     return a0a0 .- (2*ca).*der_pa0
 end
 
-function a0a0_imp(a0a0::juobs.Corr, pa0::juobs.Corr; ca,  bnd::Boundary=open)
+function a0a0_imp(a0a0::AbstractCorr, pa0::AbstractCorr; ca,  bnd::Boundary=open)
     check_corr(a0a0, pa0,no_gamma)
     imp = if bnd == open
         a0a0_imp(a0a0.obs[2:end-1],pa0.obs[2:end-1],ca=ca, bnd=bnd)
     elseif bnd==periodic
         a0a0_imp(a0a0.obs,pa0.obs,ca=ca, bnd=bnd)
-        return juobs.Corr(imp,pa0.kappa,pa0.mu,pa0.gamma, pa0.y0,pa0.theta1,pa0.theta2)
+        return ObsIO.__update__(a0a0,obs=imp)
     end
 end
 
 @doc """
      pv_imp(pv,pt...;cv,L::Int64=1,theta1, theta2, bnd::Boundary = open)
-     pv_imp(pv::juobs.Corr, pt::juobs.Corr...; cv, L=1, theta1=Float64[],theta2 = Float64[], bnd::Boundary=open)
+     pv_imp(pv::AbstractCorr, pt::AbstractCorr...; cv, L=1, theta1=Float64[],theta2 = Float64[], bnd::Boundary=open)
 
 Compute the improved G_{PV} =  1/3 \\sum_{k=1}^3G_{PV_i} correlator according to the equations
 ```math
@@ -163,7 +161,7 @@ function pv_imp(pv,pt...; cv,L::Int64=1,theta1, theta2, bnd::Boundary = open)
     return pv .-cv *der_pt .- cv*aux./3
 end
 
-function pv_imp(pv::juobs.Corr, pt::juobs.Corr...; cv, L=1, theta1=Float64[],theta2 = Float64[], bnd::Boundary=open)
+function pv_imp(pv::AbstractCorr, pt::AbstractCorr...; cv, L=1, theta1=Float64[],theta2 = Float64[], bnd::Boundary=open)
     check_corr(pv,pt...,no_gamma)
     if isempty(theta1)
         theta1 = pv.theta1
@@ -176,12 +174,12 @@ function pv_imp(pv::juobs.Corr, pt::juobs.Corr...; cv, L=1, theta1=Float64[],the
     elseif bnd ==periodic
         pv_imp(pv.obs, [t.obs for t in pt]..., cv=cv,L=L, theta1=theta1, theta2=theta2, bnd =periodic)
     end
-    return juobs.Corr(imp,pv.kappa, pv.mu,pv.gamma,pv.y0,pv.theta1,pv.theta2,)
+    return ObsIO.__update__(pv,obs=imp)
 end
 
 @doc raw"""
      pv0_imp(pv0, pt...; theta1,theta2, cv,L::Int64=1, bnd::Boundary=open)
-     pv0_imp(pv0::juobs.Corr,pt::juobs.Corr ...;cv,L=1,theta1 = Float64[], theta2 = Float64[], bnd::Boundary=open)::juobs.Corr
+     pv0_imp(pv0::AbstractCorr,pt::AbstractCorr ...;cv,L=1,theta1 = Float64[], theta2 = Float64[], bnd::Boundary=open)::AbstractCorr
 
 Improve the correlator G_PV0 and G_PV0 with the tensor correlator according to the improvement equation
 
@@ -219,7 +217,7 @@ function pv0_imp(pv0, pt...; theta1,theta2, cv,L::Int64=1, bnd::Boundary=open)
     return pv0.-cv.*aux
 end
 
-function pv0_imp(pv0::juobs.Corr,pt::juobs.Corr ...;cv,L=1,theta1 = Float64[], theta2 = Float64[], bnd::Boundary=open)
+function pv0_imp(pv0::AbstractCorr,pt::AbstractCorr ...;cv,L=1,theta1 = Float64[], theta2 = Float64[], bnd::Boundary=open)
     check_corr(pv0,pt...,no_gamma)
     if isempty(theta1)
         theta1 = pv0.theta1
@@ -232,5 +230,5 @@ function pv0_imp(pv0::juobs.Corr,pt::juobs.Corr ...;cv,L=1,theta1 = Float64[], t
     elseif bnd ==periodic
         pv0_imp(pv0.obs, [x.obs for x in pt]..., cv=cv, L=L,theta1=theta1, theta2=theta2, bnd=bnd)
     end
-    return juobs.Corr(imp, pv0.kappa,pv0.mu, pv0.gamma,pv0.y0,pv0.theta1,pv0.theta2)
+    return ObsIO.__update__(pv0,obs=imp)
 end
