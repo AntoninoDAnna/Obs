@@ -132,7 +132,7 @@ function average_corr(x::AbstractCorr...;flag::Check_flag = no_gamma)
     # end
 
     mean = reduce(+,obs)/Nc
-    return  ObsIO.__update__(x[1],obs=obs)
+    return  ObsIO.__update__(x[1],obs=mean)
 end
 
 

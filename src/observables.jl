@@ -20,7 +20,7 @@ function mpcac(a0p,pp,bnd::Boundary=open)
     return -der_a0p./(2 .*pp);
 end
 
-function mpcac(a0p::AbstractCorr,pp::AbstractCorr,bnd::Boundary = open)
+function mpcac(a0p::T,pp::T,bnd::Boundary = open) where T<:AbstractCorr
     if bnd == open
         return mpcac(a0p.obs[2:end-1], pp.obs[2:end-1],bnd)
     elseif bnd == periodic
@@ -50,7 +50,7 @@ function meff(v,bnd::Boundary=open)
     end
 end
 
-function meff(v::AbstractCorr,bnd::Boundary=open)
+function meff(v::T,bnd::Boundary=open) where T<:AbstractCorr
     if bnd == open
         return meff(v.obs[2:end-1],bnd)
     elseif bnd == periodic
@@ -101,7 +101,7 @@ function RIII(HtoL,H, L, EL,EH;xsnk::Int64,xsrc::Int64)
 end
 
 for f in (:RI, :RII, :RIII)
-    @eval function $(f)(HtoL::AbstractCorr,H::AbstractCorr,L::AbstractCorr,EL,EH;xsnk::Int64)
+    @eval function $(f)(HtoL::T,H::U,L::U,EL,EH;xsnk::Int64) where {T<:AbstractCorr, U<:AbstractCorr}
         if HtoL.theta1 != L.theta1
             error("[$(f)] theta mismatch. thetas: $(HtoL.theta1) and $(L.theta1)")
         end
@@ -132,7 +132,7 @@ function ps_dec(pa0,pp,mps,y0)
     return sqrt.(2 ./abs.(mps)).*R.*e
 end
 
-function ps_dec(pa0::AbstractCorr,pp::AbstractCorr,mps,y0=0)
+function ps_dec(pa0::T,pp::T,mps,y0=0) where T<:AbstractCorr
     check_corr(pa0,pp,flag=no_gamma)
     if y0==0
         return ps_dec(pa0.obs[2:end-1],pp.obs[2:end-1],mps,pa0.y0)
@@ -154,7 +154,7 @@ function dec(c,m,y0)
     return sqrt.(2 ./abs.(m)).*sqrt.(abs.(c)).*e
 end
 
-function dec(c::AbstractCorr,m,y0=0)
+function dec(c::T,m,y0=0) where T<:AbstractCorr
     if y0==0
         return dec(c.obs[2:end-1],m,c.y0)
     else
