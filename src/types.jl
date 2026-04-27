@@ -1,12 +1,14 @@
 """
-    Boundary
-
-enum list that represent the boundary condition used in the data. As of now it can take the
-following value:
-  - `open = 0`;
-  - `periodic = 1`;
+        OBC
+empty structure used to exploit julia automatic dispacth. It selects the function to use when Open Boundary Conditions applies
 """
-@enum Boundary open periodic
+struct OBC end
+"""
+        PBC
+empty structure used to exploit julia automatic dispacth. It selects the function to use when Periodic Boundary Conditions applies
+"""
+struct PBC end
+
 
 """
     Check_flag
