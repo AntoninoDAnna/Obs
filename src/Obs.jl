@@ -3,7 +3,7 @@ using ObsIO
 using BitFlags
 
 
-include("enum.jl")
+include("types.jl")
 include("utilities.jl")
 include("improvements.jl")
 include("observables.jl")
