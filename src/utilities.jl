@@ -4,15 +4,21 @@
 Compute the symmetryc derivative of `v` according to the boundary condition in `bnd`
 See also [`Boundary`](@ref)
 """
-function sym_der(v,bnd::Boundary)
+function sym_der(v,::OBC)
     res = similar(v)
-    res[2:end-1] = 0.5 .* (v[3:end].-v[1:end-2])
-    if bnd == open
-        res[1] = v[2] - v[1]
-        res[end] = v[end] - v[end-1]
-    elseif bnd == periodic
-        res[1] = 0.5*(v[2]-v[end])
-        res[2] = 0.5*(v[1]-v[end-1])
+    for i in 2:lastindex(res)-1
+        res[i] = 0.5 .* (v[i+1].-v[i-1])
+    end
+    res[1] = v[2] - v[1]
+    res[end] = v[end] - v[end-1]
+    return res
+end
+
+function sym_der(v,::PBC)
+    res = similar(v)
+    T = length(res)
+    for i in eachindex(res)
+        res[i] = 0.5 .* (v[i%T+1].-v[(i-T-2)%T+1])
     end
     return res
 end
@@ -35,104 +41,98 @@ symmetrize the correlator with respect to the source position `y0`
 
 See also [`Boundary`](@ref)
 """
-function sym_source(corr, y0, parity, bnd::Boundary)
+function sym_source(corr, y0, parity, ::OBC)
     T = lastindex(corr)
-    if bnd == open
-        is, ie = if T == 2y0
-            1,T-1
-        elseif T<2y0
-            2y0-T, T
-        else
-            1,2y0-1
-        end
-        res = 0.5.*(corr[y0:ie] .+ parity*corr[y0:-1:is])
-    elseif bnd ==periodic
-        res = zeros(typeof(corr[1]),div(T,2))
-        for i in eachindex(res)
-            res[i] = 0.5*( corr[(y0+i-1)%T] + corr[(y0-i+1)%T] )
-        end
+    is, ie = if T == 2y0
+        1,T-1
+    elseif T<2y0
+        2y0-T, T
+    else
+        1,2y0-1
+    end
+    res = 0.5.*(corr[y0:ie] .+ parity*corr[y0:-1:is])
+    return res
+end
+
+function sym_source(corr,y0,parity,::PBC)
+    res = zeros(typeof(corr[1]),div(T,2))
+    for i in eachindex(res)
+        res[i] = 0.5*( corr[(y0+i-1)%T] + corr[(y0-i+1)%T] )
     end
     return res
 end
 
-function sym_source(corr::AbstractCorr,y0,parity,bnd::Boundary)
-    obs = if bnd == open
-        sym_source(corr.obs[2:end-1],y0,parity,bnd)
-    elseif bnd == periodic
-        sym_source(corr.obs,y0,parity,bnd)
+sym_source(corr,y0,parity) = sym_source(corr,y0,parity,OBC())
+
+sym_source(corr::AbstractCorr,y0,parity,::OBC) = sym_source(corr.obs[2:end-1],y0,parity)
+sym_source(corr::AbstractCorr,y0,parity,::PBC) = sym_source(corr.obs,y0,parity)
+
+sym_source(corr::AbstractCorr, parity,bnd::Union{OBC,PBC}) =
+    sym_source(corr,ObsIO.src(corr),parity,bnd)
+
+sym_source(corr::AbstractCorr,parity) = sym_source(corr,ObsIO.src(corr),parity,OBC())
+
+
+function get_average_point(C,n)
+    P = C[1].points[n]
+    any(P.gamma != c.points[n].gamma for c in C ) || return P
+    g = ntuple(i->C[i].points[n].gamma,length(C))
+    if all(x in g for x in (ObsIO.G1,ObsIO.G2,ObsIO.G3))
+        return ObsIO.__update__(P,gamma = ObsIO.Gi)
     end
-    return ObsIO.__update__(corr,obs=obs)
+    if all(x in g for x in (ObsIO.G0G1,ObsIO.G0G2,ObsIO.G0G3))
+        return ObsIO.__update__(P,gamma = ObsIO.G0Gi)
+    end
+    if all(x in g for x in (ObsIO.G1G5,ObsIO.G2G5, ObsIO.G3G5))
+        return ObsIO.__update__(P,gamma = ObsIO.GiG5)
+    end
+    if all(x in g for x in (ObsIO.G1G2,ObsIO.G2G3, ObsIO.G1G3))
+        return ObsIO.__update__(P,gamma = ObsIO.GiGj)
+    end
+    error("cannot average these points")
 end
 
-sym_source(corr::AbstractCorr, parity, bnd::Boundary) = sym_source(corr,ObsIO.src(corr),
-                                                                   parity,bnd)
-
-
-@doc """
-     check_corr(c::AbstractCorr...; flag::Check_flag)
-
-check that all correlator are compatible. Use flag to ignore specific fields
-
-See also [`Check_flag`](@ref)
-"""
-function check_corr(c::AbstractCorr...; flag::Check_flag)
-    fields =let
-        aux =(flag .& instances(Check_flag)[2:end] .==no_flag) |> collect # remove no_flag and no_thetas
-        [:gamma, :obs, :kappa, :mu, :y0, :theta1, :theta2][aux]
-    end
-    if :obs in fields
-        x = getfield.(c,:obs)
-        n = length(x[1])
-        if any(length.(x[2:end]).!=n)
-            error("[check_corr] No compatible correlators. Fields :obs have different lengths")
-        end
-        filter!(x->x ≠ :obs, fields)
-    end
-    for f in fields
-        x = getfield.(c,f)
-        if any(x .!= [x[1]])
-            error("[check_corr] No compatible correlators. Fields $f are different")
+function get_averaged_prop(C,pts,n)
+    pr = C[1].propagators[n]
+    for c in C, f in  (:k,:mu,:pF,:seq_prop,:theta)
+        if !isequal(getfield(pr,f),getfield(c.propagators[n],f))
+            error("cannot average these propagators")
         end
     end
+    if any(pr.src != c.propagators[n].src for c in C)
+        _p = findfirst(isequal(pr.src.x0 ,p.x0) for p in pts)
+        return ObsIO.__update__(pr,src = pts[_p])
+    end
+    if any(pr.snk != c.propagators[n].snk for c in C)
+        _p = findfirst(isequal(pr.snk.x0, p.x0) for p in pts)
+        return ObsIO.__update__(pr,snk = pts[_p])
+    end
+    return pr
 end
 
 @doc """
-     average_corr(x::juobs.Corr...; flag::Check_flag = no_gamma)
+     average_corr(x::ObsIO.Corr{N}) where N
 
-It average the correlator `x...`. It first check for compatibility among the
-correlator according to `flag`. It is meant to average correlator with vector
-and tensor currents and `flag = no_gamma`.
+It average the correlator `x...`.
 
 ## Output Specifics
 
-The function returns a `juobs.Corr` with gamma structure made by appending
-the gamma structure of the original correlator, so that if we average
-three correlator with gamma structure `G1`, `G2` and `G3`, the returned
-correlator has gamma structure `G1,G2,G3`.
-
-#TODO: if `flags` is something different that `no_gamma`, the correlators will
-be averaged correctly but other informations will be lost (`:kappa`, `:mu`, ecc...)
-
-See also [`check_corr`](@ref), [`Check_flag`](@ref)
+The function returns a `Corr{N}` with gamma structure replace as follow:
+  - all gammas are equal -> keep the current structure
+  - G1,G2,G3 -> Gi
+  - G0G1,G0G2,G0G3 -> G0Gi
+  - G5G1,G5G2,G5G3 -> G5Gi
+  - G1G2, G1G3, G2G3 -> GiGj
 """
-function average_corr(x::AbstractCorr...;flag::Check_flag = no_gamma)
-    # check_corr(x..., flag = flag)
-    Nc = length(x)
-    obs = getfield.(x,:obs)
-    # gamma = getfield.(x,:gamma)
-    # G1 = if all(x->x[1]==gamma[1][1], gamma[2:end])
-    #     gamma[1][1]
-    # else
-    #     join([g[1] for g in gamma],",")
-    # end
-    # G2 = if all(x->x[2]==gamma[1][2], gamma[2:end])
-    #     gamma[1][2]
-    # else
-    #     join([g[2] for g in gamma],",")
-    # end
-
-    mean = reduce(+,obs)/Nc
-    return  ObsIO.__update__(x[1],obs=mean)
+function average_corr(C::ObsIO.Corr{N}...) where N
+    Nc = length(C)
+    f(n)  = get_average_point(C,n)
+    pts = ntuple(f,N)
+    g(n) = get_averaged_prop(C,pts,n)
+    prp = ntuple(g,N)
+    println(typeof(prp))
+    obs = reduce(+,getfield.(C,:obs))./Nc
+    return ObsIO.Corr(obs,pts,prp)
 end
 
 

@@ -24,68 +24,90 @@ equations
 
 See also [`sym_der`](@ref), [`Boundary`](@ref)
 """
-function v_imp(vv,vt...;cv, L=1, theta1,theta2, bnd::Boundary=open)
-    der_vt = sym_der(vt[1],bnd)
-    imp = vv.-2cv*der_vt
+function v_imp(vivi,vit0i,bnd::Union{OBC,PBC}; cv)
+    der_vt = sym_der(vit0i,bnd)
+    return vivi.-2cv*der_vt
+end
 
+function v_imp(vivi, vit0i, v1t12, v1t13, v2t12, v2t23, v3t13, v3t23,bnd::Union{OBC,PBC};
+               cv,L=1,theta1,thet2)
     p = (theta1.-theta2)/L
-    if all(p.==0)
-        return imp
-    end
-
-    if length(vt) !=7
-        error("[v_imp]: unexpected number of tensor current correlators")
-    end
-
-    v1t12, v1t13, v2t12,v2t23, v3t13,v3t23 = [v for v in vt[2:end]]
-    aux = -sin(p[1]).*(v2t12.+v3t13).+sin(p[2]).*(v1t12.-v3t23)+sin(p[3]).*(v1t13+v2t23)
-
+    imp = v_imp(vivi,vit0i,bnd,cv=cv)
+    all(pp==0 for pp in p) && return imp
+    aux = -sin(p[1]).*(v2t12.+v3t13).+
+        sin(p[2]).*(v1t12.-v3t23).+
+        sin(p[3]).*(v1t13.+v2t23)
     return imp .-2cv*aux
 end
 
-function v_imp(vv::AbstractCorr,vt::AbstractCorr...;cv,L=1, theta1=Float64[],theta2=Float64[], bnd::Boundary=open)
-    check_corr(vv,vt..., flag = no_gamma)
-    vv, vt = if bnd == open
-        vv.obs[2:end-1], [x.obs[2:end-1] for x in vt]
-        elseif bnd ==period
-        vv.obs , getfield.(vt,:obs);
-    end
-    if isempty(theta1)
-        theta1 = vv.theta1
-    end
-    if isempty(theta2)
-        theta2 = vv.theta2
-    end
-    imp = v_imp(vv,vt..., cv = cv, L=L, theta=theta1, theta2=theta2)
+function v_imp(vivi::T, vit0i::T, bnd::OBC;cv)::T where T<: AbstractCorr
+    imp = v_imp(vivi.obs[2:end-1],vit0i.obs[2:end-1],bnd,cv=cv)
+    return ObsIO.__update__(vv,obs=imp)
+end
+
+function v_imp(vivi::T, vit0i::T, bnd::PBC;cv)::T where T<: AbstractCorr
+    imp =v_imp(vivi.obs,vit0i.obs,bnd,cv=cv)
+    return ObsIO.__update__(vv,obs=imp)
+end
+
+function v_imp(vivi::T, vit0i::T, v1t12::T,
+               v1t13::T, v2t12::T, v2t23::T,
+               v3t13::T, v3t23::T,bnd::OBC;
+               cv,L=1,theta1=nothing,theta2=nothing)::T where T<: AbstractCorr
+
+    isnothing(theta1) && (theta1 = theta(vv)[1])
+    isnothing(theta2) && (theta2 = theta(vv)[2])
+    imp = v_imp(vivi.obs[2:end-1], vit0i.obs[2:end-1],
+                v1t12.obs[2:end-1],v1t13.obs[2:end-1],
+                v2t12.obs[2:end-1],v2t23.obs[2:end-1],
+                v3t13.obs[2:end-1],v3t23.obs[2:end-1],bnd,
+                cv=cv,L=L,theta1=theta1,theta2=theta2)
+    return ObsIO.__update__(vv,obs=imp)
+end
+
+function v_imp(vivi::T, vit0i::T, v1t12::T,
+               v1t13::T, v2t12::T, v2t23::T,
+               v3t13::T, v3t23::T,bnd::PBC;
+               cv,L=1,theta1=nothing,theta2=nothing)::T where T<: AbstractCorr
+
+    isnothing(theta1) && (theta1 = theta(vv)[1])
+    isnothing(theta2) && (theta2 = theta(vv)[2])
+    imp = v_imp(vivi.obs, vit0i.obs,
+                v1t12.obs,v1t13.obs,
+                v2t12.obs,v2t23.obs,
+                v3t13.obs,v3t23.obs,bnd,
+                cv=cv,L=L,theta1=theta1,theta2=theta2)
     return ObsIO.__update__(vv,obs=imp)
 end
 
 @doc raw"""
-    pa0_imp(pa0,pp; ca, bnd::Boundary =open)
-    pa0_imp(pa0::AbstractCorr,pp::AbstractCorr; ca, bnd::Boundary =open)::AbstractCorr
+    pa0_imp(pa0,pp; ca)
+    pa0_imp(pa0::T,pp::T, bnd::Union{OBC, PBC}; ca)::T where T<:AbstractCorr
 
 Improve the correlator G_{PA_0} according to the equation
 ```math
     G_{PA_0^{I}} = G_{PA_0} - a c_A \\de_t G_{PP}
 ```
+
+`bnd` is an expected parameter used to discriminate between Open and Periodic Boundary Contidions
 # Keyword Arguments
   - `ca`: mandatory keyword argument. It is the improved operator [See also `ca_fit`]
-  - `bnd` : Boundary condition of the lattice. Used to compute the derivatives
 
 See also [`sym_der`](@ref), [`Boundary`](@ref)
 """
-function pa0_imp(pa0, pp; ca, bnd::Boundary=open)
+function pa0_imp(pa0, pp,bnd::Union{OBC,PBC}; ca)
     der_p=sym_der(pp,bnd)
     return pa0.-ca.*der_p
 end
 
-function pa0_imp(pa0::AbstractCorr, pp::AbstractCorr; ca,  bnd::Boundary=open)
+function pa0_imp(pa0::T, pp::T, ::OBC; ca)::T where T<:AbstractCorr
     check_corr(pa0, pp,flag=no_gamma)
-    imp = if bnd == open
-        pa0_mp(pa0.obs[2:end-1],pp.obs[2:end-1],ca=ca, bnd=bnd)
-    elseif bnd==periodic
-        pa0_imp(pa0.obs,pp.obs,ca=ca, bnd=bnd)
-    end
+    imp = pa0_mp(pa0.obs[2:end-1],pp.obs[2:end-1],ca=ca)
+    return ObsIO.__update__(pa0,obs=imp)
+end
+
+function pa0_imp(pa0::T,pp::T,::PBC;ca)::T where T<:AbstractCorr
+    imp = pa0_imp(pa0.obs,pp.obs,ca=ca, bnd=bnd)
     return ObsIO.__update__(pa0,obs=imp)
 end
 
@@ -103,24 +125,24 @@ Improve the correlator G_{A_0 A_0} according to the equation
 
 See also [`sym_der`](@ref), [`Boundary`](@ref)
 """
-function a0a0_imp(a0a0, pa0; ca, bnd::Boundary=open)
+function a0a0_imp(a0a0, pa0, bnd::Union{OBC,PBC}; ca)
     der_pa0 = sym_der(pa0,bnd)
     return a0a0 .- (2*ca).*der_pa0
 end
 
-function a0a0_imp(a0a0::AbstractCorr, pa0::AbstractCorr; ca,  bnd::Boundary=open)
-    check_corr(a0a0, pa0,no_gamma)
-    imp = if bnd == open
-        a0a0_imp(a0a0.obs[2:end-1],pa0.obs[2:end-1],ca=ca, bnd=bnd)
-    elseif bnd==periodic
-        a0a0_imp(a0a0.obs,pa0.obs,ca=ca, bnd=bnd)
-        return ObsIO.__update__(a0a0,obs=imp)
-    end
+function a0a0_imp(a0a0::T, pa0::T,bnd::OBC; ca )::T where T<:AbstractCorr
+    imp = a0a0_imp(a0a0.obs[2:end-1],pa0.obs[2:end-1],bnd,ca=ca)
+    return ObsIO.__update__(a0a0,obs=imp)
+end
+
+function a0a0_imp(a0a0::T, pa0::T,bnd::PBC; ca )::T where T<:AbstractCorr
+    imp = a0a0_imp(a0a0.obs,pa0.obs,bnd,ca=ca)
+    return ObsIO.__update__(a0a0,obs=imp)
 end
 
 @doc """
      pv_imp(pv,pt...;cv,L::Int64=1,theta1, theta2, bnd::Boundary = open)
-     pv_imp(pv::AbstractCorr, pt::AbstractCorr...; cv, L=1, theta1=Float64[],theta2 = Float64[], bnd::Boundary=open)
+     pv_imp(pv::T, pt::T...; cv, L=1, theta1=Float64[],theta2 = Float64[], bnd::Boundary=open)
 
 Compute the improved G_{PV} =  1/3 \\sum_{k=1}^3G_{PV_i} correlator according to the equations
 ```math
@@ -141,45 +163,53 @@ Compute the improved G_{PV} =  1/3 \\sum_{k=1}^3G_{PV_i} correlator according to
   - `bnd` : Boundary condition of the lattice. Used to compute the derivatives
 
 See also [`sym_der`](@ref), [`Boundary`](@ref)
-"""
-function pv_imp(pv,pt...; cv,L::Int64=1,theta1, theta2, bnd::Boundary = open)
+            """
+
+function pv_imp(pvi, pt0i,bnd::Union{OBC,PBC};cv)
     der_pt = sym_der(pt[1],bnd)
+    return pv .- cv.*der_pt # we only have access to T_{0i}, but we want T_{i0}
+end
 
+function pv_imp(pv,pt0i,pt12,pt13,pt23,bnd::Union{OBC,PBC}; cv,L::Int64=1,theta1, theta2)
+    imp = pv_imp(pv.pt01,bnd,cv=cv)
     p = (theta1.-theta2)./L
-    if all(p.==0) || all(p[2:end].==p[1])
-        return pv .- cv.*der_pt # we only have access to T_{0i}, but we want T_{i0}
-    end
-    if length(pt) .!=4
-        error("[pv_imp]: unexpected number of tensor current correlators")
-    end
-
-    pt12, pt13, pt23 = pt[2:end]
+    (all(p.==0) || all(p[2:end].==p[1]) ) && return imp
     aux  = -sin(p[1])*(pt12+pt13)
     aux +=  sin(p[2])*(pt12-pt23)
     aux +=  sin(p[3])*(pt13-pt23)
-
     return pv .-cv *der_pt .- cv*aux./3
 end
 
-function pv_imp(pv::AbstractCorr, pt::AbstractCorr...; cv, L=1, theta1=Float64[],theta2 = Float64[], bnd::Boundary=open)
-    check_corr(pv,pt...,no_gamma)
-    if isempty(theta1)
-        theta1 = pv.theta1
-    end
-    if isempty(theta2)
-        theta2 = pv.theta2
-    end
-    imp = if bnd == open
-        pv_imp(pv.obs[2:end-1], [t.obs[2:end-1] for t in pt]..., cv=cv,L=L, theta1=theta1, theta2=theta2, bnd =open)
-    elseif bnd ==periodic
-        pv_imp(pv.obs, [t.obs for t in pt]..., cv=cv,L=L, theta1=theta1, theta2=theta2, bnd =periodic)
-    end
+function pv_imp(pvi::T, pt0i::T, bnd::OBC; cv)::T where T<:AbstractCorr
+    imp = pv_imp(pvi.obs[2:end-1],pt0i.obs[2:end-1],bnd,cv=cv)
+    return ObsIO.__update__(pv,obs=imp)
+end
+
+function pv_imp(pvi::T, pt0i::T, bnd::PBC; cv)::T where T<:AbstractCorr
+    imp = pv_imp(pvi.obs,pt0i.obs,bnd,cv=cv)
+    return ObsIO.__update__(pv,obs=imp)
+end
+
+function pv_imp(pv::T, pt0i::T, pt12::T, pt13::T, pt23::T, bnd::OBC; cv, L=1, theta1=nothing,theta2=nothing)::T where T<:AbstractCorr
+    isnothing(theta1) && (theta1 = theta(pv)[1])
+    isnothing(theta2) && (theta2 = theta(pv)[2])
+    imp =  pv_imp(pv.obs[2:end-1], pt0i.obs[2:end-1], pt12.obs[2:end-1],
+                  pt13.obs[2:end-1], pt23.obs[2:end-1],bnd,
+                  cv=cv,L=L, theta1=theta1, theta2=theta2)
+    return ObsIO.__update__(pv,obs=imp)
+end
+
+function pv_imp(pv::T, pt0i::T, pt12::T, pt13::T, pt23::T, bnd::PBC; cv, L=1, theta1=nothing,theta2=nothing)::T where T<:AbstractCorr
+    isnothing(theta1) && (theta1 = theta(pv)[1])
+    isnothing(theta2) && (theta2 = theta(pv)[2])
+    imp =  pv_imp(pv.obs, pt0i.obs, pt12.obs, pt13.obs, pt23.obs,bnd,
+                  cv=cv,L=L, theta1=theta1, theta2=theta2)
     return ObsIO.__update__(pv,obs=imp)
 end
 
 @doc raw"""
      pv0_imp(pv0, pt...; theta1,theta2, cv,L::Int64=1, bnd::Boundary=open)
-     pv0_imp(pv0::AbstractCorr,pt::AbstractCorr ...;cv,L=1,theta1 = Float64[], theta2 = Float64[], bnd::Boundary=open)::AbstractCorr
+     pv0_imp(pv0::T,pt::T ...;cv,L=1,theta1 = Float64[], theta2 = Float64[], bnd::Boundary=open)::T
 
 Improve the correlator G_PV0 and G_PV0 with the tensor correlator according to the improvement equation
 
@@ -201,34 +231,29 @@ Improve the correlator G_PV0 and G_PV0 with the tensor correlator according to t
 
 See also [`sym_der`](@ref), [`Boundary`](@ref)
 """
-function pv0_imp(pv0, pt...; theta1,theta2, cv,L::Int64=1, bnd::Boundary=open)
+function pv0_imp(pv0, pt01, pt02, pt03; theta1,theta2, cv,L::Int64=1)
     p = (theta1.-theta2)./L
+    all(p.==0) &&   return pv0
 
-    if all(p.==0)
-        return pv0
-    end
+    length(pt)==3 ||  error("[pv0_imp] unexpected number of tensor current correlator")
 
-    if length(pt) !=3
-        error("[pv0_imp] unexpected number of tensor current correlator")
-    end
-
-    dsin = sin.(p)
-    aux = sin(p[1])*pt[1]+sin(p[2])*pt[2]+sin(p[3])*pt[3]
+    aux = sin(p[1]).*pt01.+sin(p[2]).*pt02.+sin(p[3]).*pt03
     return pv0.-cv.*aux
 end
 
-function pv0_imp(pv0::AbstractCorr,pt::AbstractCorr ...;cv,L=1,theta1 = Float64[], theta2 = Float64[], bnd::Boundary=open)
-    check_corr(pv0,pt...,no_gamma)
-    if isempty(theta1)
-        theta1 = pv0.theta1
-    end
-    if isempty(theta2)
-        theta2 = pv0.theta2
-    end
-    imp = if bnd ==open
-        pv0_imp(pv0.obs[2:end-1], [x.obs[2:end-1] for x in pt]..., cv=cv, L=L,theta1=theta1, theta2=theta2, bnd=bnd)
-    elseif bnd ==periodic
-        pv0_imp(pv0.obs, [x.obs for x in pt]..., cv=cv, L=L,theta1=theta1, theta2=theta2, bnd=bnd)
-    end
+function pv0_imp(pv0::T, pt01::T, pt02::T, pt03::T, ::OBC;cv,L=1,theta1 = nothing, theta2 = nothing)::T where T<:AbstractCorr
+    isnothing(theta1) && (theta1 = theta(pv)[1])
+    isnothing(theta2) && (theta2 = theta(pv)[2])
+    imp =  pv0_imp(pv0.obs[2:end-1], pt01.obs[2:end-1], pt02.obs[2:end-1],
+                   pt03.obs[2:end-1], cv=cv, L=L,theta1=theta1, theta2=theta2)
+    return ObsIO.__update__(pv0,obs=imp)
+end
+
+
+function pv0_imp(pv0::T, pt01::T, pt02::T, pt03::T, ::PBC;cv,L=1,theta1 = nothing, theta2 = nothing)::T where T<:AbstractCorr
+    isnothing(theta1) && (theta1 = theta(pv)[1])
+    isnothing(theta2) && (theta2 = theta(pv)[2])
+    imp =  pv0_imp(pv0.obs, pt01.obs, pt02.obs,
+                   pt03.obs, cv=cv, L=L,theta1=theta1, theta2=theta2)
     return ObsIO.__update__(pv0,obs=imp)
 end
