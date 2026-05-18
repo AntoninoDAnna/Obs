@@ -104,7 +104,9 @@ function RI(HtoL::Corr{3}, H::Corr{2}, L::Corr{2}, EL::R, EH::R) where R
     T = length(H.obs)
     xsrc,xsnk = src(HtoL),snk(HtoL)
     isbackward = xsrc > xsnk
-    isbackward && (xsrc,xsnk = xsnk,xsrc)
+    if isbackward
+        xsrc,xsnk = xsnk,xsrc
+    end
     _r = xsrc+1:xsnk+1 ## take into account the C -> julia index convention
     _HtoL = view(HtoL.obs,_r)
     _H = view(H.obs,_r)

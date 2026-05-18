@@ -100,14 +100,14 @@ function pa0_imp(pa0, pp,bnd::B where {B<:BC}; ca)
     return pa0.-ca.*der_p
 end
 
-function pa0_imp(pa0::T, pp::T, ::OBC; ca)::T where T<:AbstractCorr
-    check_corr(pa0, pp,flag=no_gamma)
-    imp = pa0_mp(pa0.obs[2:end-1],pp.obs[2:end-1],ca=ca)
-    return ObsIO.__update__(pa0,obs=imp)
+function pa0_imp(pa0::T, pp::T, bnd::OBC; ca)::T where T<:AbstractCorr
+    imp = pa0_imp(pa0.obs[2:end-1],pp.obs[2:end-1],bnd,ca=ca)
+    _zero = zero(eltype(imp))
+    return ObsIO.__update__(pa0,obs=[_zero;imp;_zero])
 end
 
-function pa0_imp(pa0::T,pp::T,::PBC;ca)::T where T<:AbstractCorr
-    imp = pa0_imp(pa0.obs,pp.obs,ca=ca, bnd=bnd)
+function pa0_imp(pa0::T,pp::T,bnd::PBC;ca)::T where T<:AbstractCorr
+    imp = pa0_imp(pa0.obs,pp.obs,bnd,ca=ca,)
     return ObsIO.__update__(pa0,obs=imp)
 end
 
