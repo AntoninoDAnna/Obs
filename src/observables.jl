@@ -15,17 +15,18 @@ If `a0p` and/or `pp` are `AbstractCorr`, then according to `bnd` the code uses:
 
 See also [`sym_der`](@ref), [`Boundary`](@ref), [`pa0_imp`](@ref)
 """
-function mpcac(a0p,pp)
+function mpcac(a0p,pp,bnd::B where {B<:BC})
     der_a0p = sym_der(a0p,bnd)
     return -der_a0p./(2 .*pp);
 end
 
-mpcac(a0p::T,pp::T,::OBC) where T<:AbstractCorr = mpcac(a0p.obs[2:end-1], pp.obs[2:end-1])
-mpcac(a0p::T,pp::T,::PBC) where T<:AbstractCorr = mpcac(a0p.obs,pp.obs)
-mpcac(a0p,pp,ca,bnd::Union{OBC,PBC} = OBC()) = mpcac(pa0_imp(a0p,pp,ca=ca, bnd=bnd),pp)
+mpcac(a0p::T,pp::T,bnd::OBC) where T<:AbstractCorr = mpcac(a0p.obs[2:end-1], pp.obs[2:end-1],bnd)
+mpcac(a0p::T,pp::T,bnd::PBC) where T<:AbstractCorr = mpcac(a0p.obs,pp.obs)
+mpcac(a0p,pp,ca,bnd::B where {B<:BC} = OBC()) = mpcac(pa0_imp(a0p,pp,bnd,ca=ca),pp)
+mpcac(a0p,pp) = mpcac(a0p,pp,OBC())
 
 @doc """
-        meff(v,x0,::Union{OBC,PBC})
+        meff(v,x0,::B where {B<:BC})
         meff(v::T,::Union{OBC,OBC})
 
 It computes the effective mass, using a consistent definition for both the forward and backward propagating correlator and assuming open boundary conditions applies
@@ -55,7 +56,7 @@ function meff(v,x0,::PBC)
 end
 
 
-meff(v,bnd::Union{OBC,PBC}) = meff(v,1,bnd)
+meff(v,bnd::B where {B<:BC}) = meff(v,1,bnd)
 meff(v::T,bnd::OBC) where T<:AbstractCorr = meff(v.obs[2:end-1], ObsIO.src(v),bnd)
 meff(v::T,bnd::PBC) where T<:AbstractCorr = meff(v.obs, ObsIO.src(v),bnd)
 

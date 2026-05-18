@@ -24,12 +24,12 @@ equations
 
 See also [`sym_der`](@ref), [`Boundary`](@ref)
 """
-function v_imp(vivi,vit0i,bnd::Union{OBC,PBC}; cv)
+function v_imp(vivi,vit0i,bnd::B where {B<:BC}; cv)
     der_vt = sym_der(vit0i,bnd)
     return vivi.-2cv*der_vt
 end
 
-function v_imp(vivi, vit0i, v1t12, v1t13, v2t12, v2t23, v3t13, v3t23,bnd::Union{OBC,PBC};
+function v_imp(vivi, vit0i, v1t12, v1t13, v2t12, v2t23, v3t13, v3t23,bnd::B where {B<:BC};
                cv,L=1,theta1,thet2)
     p = (theta1.-theta2)/L
     imp = v_imp(vivi,vit0i,bnd,cv=cv)
@@ -95,7 +95,7 @@ Improve the correlator G_{PA_0} according to the equation
 
 See also [`sym_der`](@ref), [`Boundary`](@ref)
 """
-function pa0_imp(pa0, pp,bnd::Union{OBC,PBC}; ca)
+function pa0_imp(pa0, pp,bnd::B where {B<:BC}; ca)
     der_p=sym_der(pp,bnd)
     return pa0.-ca.*der_p
 end
@@ -125,7 +125,7 @@ Improve the correlator G_{A_0 A_0} according to the equation
 
 See also [`sym_der`](@ref), [`Boundary`](@ref)
 """
-function a0a0_imp(a0a0, pa0, bnd::Union{OBC,PBC}; ca)
+function a0a0_imp(a0a0, pa0, bnd::B where {B<:BC}; ca)
     der_pa0 = sym_der(pa0,bnd)
     return a0a0 .- (2*ca).*der_pa0
 end
@@ -165,12 +165,12 @@ Compute the improved G_{PV} =  1/3 \\sum_{k=1}^3G_{PV_i} correlator according to
 See also [`sym_der`](@ref), [`Boundary`](@ref)
             """
 
-function pv_imp(pvi, pt0i,bnd::Union{OBC,PBC};cv)
+function pv_imp(pvi, pt0i,bnd::B where {B<:BC};cv)
     der_pt = sym_der(pt[1],bnd)
     return pv .- cv.*der_pt # we only have access to T_{0i}, but we want T_{i0}
 end
 
-function pv_imp(pv,pt0i,pt12,pt13,pt23,bnd::Union{OBC,PBC}; cv,L::Int64=1,theta1, theta2)
+function pv_imp(pv,pt0i,pt12,pt13,pt23,bnd::B where {B<:BC}; cv,L::Int64=1,theta1, theta2)
     imp = pv_imp(pv.pt01,bnd,cv=cv)
     p = (theta1.-theta2)./L
     (all(p.==0) || all(p[2:end].==p[1]) ) && return imp
