@@ -7,7 +7,7 @@ See also [`Boundary`](@ref)
 function sym_der(v,::OBC)
     res = similar(v)
     for i in 2:lastindex(res)-1
-        res[i] = 0.5 .* (v[i+1].-v[i-1])
+        res[i] = 0.5 * (v[i+1]-v[i-1])
     end
     res[1] = v[2] - v[1]
     res[end] = v[end] - v[end-1]
@@ -18,7 +18,7 @@ function sym_der(v,::PBC)
     res = similar(v)
     T = length(res)
     for i in eachindex(res)
-        res[i] = 0.5 .* (v[i%T+1].-v[(i-T-2)%T+1])
+        res[i] = 0.5 * (v[i%T+1]-v[(i-T-2)%T+1])
     end
     return res
 end
