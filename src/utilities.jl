@@ -130,7 +130,6 @@ function average_corr(C::ObsIO.Corr{N}...) where N
     pts = ntuple(f,N)
     g(n) = get_averaged_prop(C,pts,n)
     prp = ntuple(g,N)
-    println(typeof(prp))
     obs = reduce(+,getfield.(C,:obs))./Nc
     return ObsIO.Corr(obs,pts,prp)
 end
