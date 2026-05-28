@@ -75,7 +75,7 @@ It assume that `HtoL` is ordered according to `t_H`, i.e `xsrc` correspond to th
 """
 function RI(HtoL, H, L, EL, EH)
     ts = length(HtoL) -1
-    res = Vector{eltype(HtoL)}(undef,length(HtoL))
+    res = similar(HtoL)
     for tH in 0:ts
         tL = ts- tH
         res[tH+1] = sqrt(2EL) * abs(HtoL[tH+1]) * exp(0.5*EL*tL + 0.5*EH*tH ) / sqrt(abs(H[tH+1]*L[tL+1]))
@@ -83,23 +83,46 @@ function RI(HtoL, H, L, EL, EH)
     return res
 end
 
+
+@doc raw"
+     __deduce_mass(HtoL, H, L)
+
+read the quark masses in the correlators and deduce the quark contents.
+It returns a tuple with `(h,sp,l)` where `h` is the heavy quark mass, `sp` is the specator quark and `l` is the light quark.
+"
+function __deduce_mass(HtoL::Corr{3}, H::Corr{2}, L::Corr{2})
+    function get_sp(kappa, (h1,h2), (l1,l2))
+        for k in kappa
+            if ((k == h1) || (k == h2)) && ((k == l1) || (k==l2))
+               return  k
+            end
+        end
+        error("Cannot deduce spectator quark")
+    end
+    function get_other((k1,k2),sp)
+        k1 == sp && return k2
+        k2 == sp && return k1
+        error("correlator with masses $k1, $k2 does not have the spectators quark $sp")
+    end
+    k3,kh,kl =  kappa(HtoL), kappa(H), kappa(L)
+    sp = get_sp(k3,kh,kl)
+    h = get_other(kh,sp)
+    l = get_other(kl,sp)
+    return h,sp,l
+end
+
 function RI(HtoL::Corr{3}, H::Corr{2}, L::Corr{2}, EL::R, EH::R) where R
     # We expect the correlators to have the following mass content:
-    # HtoL : (h,l,l)
-    # H: (h,l)
-    # L: (l,l)
-    l,_ = kappa(L)
-    h, = let
-        aux = kappa(H)
-        aux[2] ==l || error("[RI] L and H do not have compatible masses")
-        aux
-    end
+    # HtoL : (h,ls,l) where ls is the spectator quark
+    # H: (h,ls)
+    # L: (ls,l)
+    h,sp,l = __deduce_mass(HtoL,H,L)
     isreverse  = let
-        aux = kappa(HtoL)
-        aux[2] == l || error("[RI] spectator quark in HtoL is not compatible with L")
-        aux[2] == l || aux[3] == l || error("[RI] HtoL and L are not compatible")
-        aux[1] == h || aux[3] == h || error("[RI] HtoL and H are not compatible")
-        aux[1] == l
+        _h,_sp,_l = kappa(HtoL) ## we expect the 3pt to have these quarks
+        _sp == sp || error("[RI] The spectator quark in HtoL is not in the correct position")
+        _h == l || _l == l || error("[RI] HtoL and L are not compatible")
+        _h == h || _l == h || error("[RI] HtoL and H are not compatible")
+        _h == l
     end ## if true, we have reverse HtoL so that it reflect the H-meson time dependence
     T = length(H.obs)
     xsrc,xsnk = src(HtoL),snk(HtoL)
@@ -108,11 +131,18 @@ function RI(HtoL::Corr{3}, H::Corr{2}, L::Corr{2}, EL::R, EH::R) where R
         xsrc,xsnk = xsnk,xsrc
     end
     _r = xsrc+1:xsnk+1 ## take into account the C -> julia index convention
-    _HtoL = view(HtoL.obs,_r)
-    _H = view(H.obs,_r)
-    _L = view(L.obs,_r)
+    _HtoL = HtoL.obs[_r]
+    _H = H.obs[_r]
+    _L = L.obs[_r]
     ## from now on we are working with physical part of the correlators
-    xor(isreverse, isbackward) && (_HtoL = reverse(_HtoL))
+    # println("="^80)
+    # println("Correlators with: heavy quark     =", h)
+    # println("                  spectator quark =", sp)
+    # println("                  light quark     =", l)
+    # println("                  is backward     =", isbackward)
+    # println("                  is reverse      =", isreverse)
+    # println("="^80)
+    xor(isreverse, isbackward) && ( _HtoL = reverse(_HtoL))
     !isbackward && return RI(_HtoL,_H,_L,EL,EH)
     return RI(_HtoL,reverse(_H),reverse(_L), EL, EH)
 end
@@ -139,7 +169,7 @@ Compute the matrix element associated to the semileptonic decay `H -> L` using t
     R_{III}(t) = \sqrt(2E_L) HtoL(t)/\sqrt(H(x_{sink}) L(x_{sink})) \times  \exp(\frac{x_{sink}-2t}{2} (E_H - E_L))
 ```
 """
-function RIII(HtoL,H, L, EL,EH;xsnk::Int64,xsrc::Int64)
+function RIII(HtoL,H, L, EL,EH; xsnk::Int64,xsrc::Int64)
     R = HtoL[xsrc:xsnk] ./sqrt(abs(H[xsnk]*L[xsnk]))
     aux2 = [exp(0.5*(EH-EL)*(xsnk-2*x+xsrc)) for x in xsrc:xsnk]
     return sqrt(2*EL).*abs.(R) .*aux2
