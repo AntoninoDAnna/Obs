@@ -39,7 +39,7 @@ where `t=abs(src(v)-i)`.
 the last parameter used to discriminate between Open and Periodic Boundary conditions.
 """
 function meff(v,x0,::OBC)
-    res = fill(one(eltype(v)),length(v)-2)
+    res = fill(one(eltype(v)),x0 == 1 ? length(v)-1 : length(v)-2)
     for i in eachindex(res)
         res[i] = i< x0 ? log(abs(v[i+1]/v[i])) : log(abs(v[i]/v[i+1]))
     end
