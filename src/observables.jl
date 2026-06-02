@@ -32,34 +32,19 @@ mpcac(a0p,pp) = mpcac(a0p,pp,OBC())
 It computes the effective mass, using a consistent definition for both the forward and backward propagating correlator and assuming open boundary conditions applies
 In particular, it uses the formula
 ```math
-        m(t) = log(c(t)/c(t+1))
+        m(t) = log(v(t)/v(t+1))
 ```
-where `t=abs(src(v)-i)`.
+where `t=src(v)-i`.
 
 the last parameter used to discriminate between Open and Periodic Boundary conditions.
 """
-function meff(v,x0,::OBC)
-    res = fill(one(eltype(v)),x0 == 1 ? length(v)-1 : length(v)-2)
-    for i in eachindex(res)
-        res[i] = i< x0 ? log(abs(v[i+1]/v[i])) : log(abs(v[i]/v[i+1]))
-    end
-    return res
-end
+meff(v,::OBC) = log.(abs.(v[1:end-1]./v[2:end]))
+meff(v::T,bnd::OBC) where T<:AbstractCorr = meff(v.obs[2:end-1],bnd)
 
-function meff(v,x0,::PBC)
-    T = length(v)
-    res = fill(one(eltype(v)),length(v))
-    for i in eachindex(res)
-        res[i] = i< x0 ? log(abs(v[i%T+1]/v[i])) : log(abs(v[i]/v[i%T+1]))
-    end
-    return res
-end
+meff(v,::PBC) = [log(abs(v[i]/v[i*length(v)+1])) for i in eachindex(v)]
+meff(v::T,bnd::PBC) where T<:AbstractCorr = meff(v.obs,bnd)
 
-
-meff(v,bnd::B where {B<:BC}) = meff(v,1,bnd)
-meff(v::T,bnd::OBC) where T<:AbstractCorr = meff(v.obs[2:end-1], ObsIO.src(v),bnd)
-meff(v::T,bnd::PBC) where T<:AbstractCorr = meff(v.obs, ObsIO.src(v),bnd)
-
+meff(v,bnd::B where {B<:BC}) = meff(v,bnd)
 meff(v) = meff(v,OBC())
 
 @doc raw"""
