@@ -176,7 +176,7 @@ function pv_imp(pv,pt0i,pt12,pt13,pt23,bnd::B where {B<:BC}; cv,L::Int64=1,theta
     (all(p.==0) || all(p[2:end].==p[1]) ) && return imp
     aux  = -sin(p[1])*(pt12+pt13)
     aux +=  sin(p[2])*(pt12-pt23)
-    aux +=  sin(p[3])*(pt13-pt23)
+    aux +=  sin(p[3])*(pt13+pt23)
     return pv .-cv *der_pt .- cv*aux./3
 end
 
@@ -234,9 +234,6 @@ See also [`sym_der`](@ref), [`Boundary`](@ref)
 function pv0_imp(pv0, pt01, pt02, pt03; theta1,theta2, cv,L::Int64=1)
     p = (theta1.-theta2)./L
     all(p.==0) &&   return pv0
-
-    length(pt)==3 ||  error("[pv0_imp] unexpected number of tensor current correlator")
-
     aux = sin(p[1]).*pt01.+sin(p[2]).*pt02.+sin(p[3]).*pt03
     return pv0.-cv.*aux
 end
