@@ -68,6 +68,40 @@ function RI(HtoL, H, L, EL, EH)
     return res
 end
 
+@doc raw"""
+    RII(HtoL::T, H::T, L::T, EL::T, EH::T) where T
+    RII(HtoL::T, H::T, L::T, EL::T, EH::T) where T
+    RII(HtoL::C, H::C, L::C, EL::T, EH::T) where {C<:AbstractCorr,T}
+
+Compute the matrix element associated to the semileptonic decay `H -> L ℓ \nu` using the ratio
+```math
+    R_II(t_H,t_L) = \sqrt(2E_L) \sqrt(HtoL(t_H) HtoL(t_L))/\sqrt(H(t_H + t_L) L(t_H +t_L))
+```
+It assume that `HtoL` is ordered according to `t_H`, i.e `xsrc` correspond to the meson H
+"""
+function RII(HtoL, H, L, EL, EH)
+    R = HtoL.*reverse(HtoL)
+    R = (2*EL).*R./(H[end]*L[end]);
+    return sqrt.(abs.(R))
+end
+
+@doc raw"""
+    RIII(HtoL::T, H::T, L::T, EL::T, EH::T) where T
+    RIII(HtoL::T, H::T, L::T, EL::T, EH::T) where T
+    RIII(HtoL::C, H::C, L::C, EL::T, EH::T) where {C<:AbstractCorr,T}
+
+Compute the matrix element associated to the semileptonic decay `H -> L` using the ratio from 1903.05870 eq 5.1
+```math
+    R_{III}(t_H,t_L) = \sqrt(2E_L) HtoL(t_H)/\sqrt(H(t_H+t_L) L(t_H+t_L)) \times  \exp((t_H-t_L)/2 (E_H - E_L))
+```
+"""
+function RIII(HtoL,H, L, EL,EH)
+    R = HtoL ./sqrt(abs(H[end]*L[end]))
+    ts = length(HtoL)-1
+    aux2 = [exp(0.5*(EH-EL)*(2tH-ts)) for tH in 0:ts]
+    return sqrt(2*EL).*abs.(R) .*aux2
+end
+
 
 @doc raw"
      __deduce_mass(HtoL, H, L)
@@ -96,7 +130,8 @@ function __deduce_mass(HtoL::Corr{3}, H::Corr{2}, L::Corr{2})
     return h,sp,l
 end
 
-function RI(HtoL::Corr{3}, H::Corr{2}, L::Corr{2}, EL::R, EH::R) where R
+function _ratios(F::Function, HtoL::Corr{3}, H::Corr{2},
+                L::Corr{2}, EL::R, EH::R) where R
     # We expect the correlators to have the following mass content:
     # HtoL : (h,ls,l) where ls is the spectator quark
     # H: (h,ls)
@@ -104,9 +139,9 @@ function RI(HtoL::Corr{3}, H::Corr{2}, L::Corr{2}, EL::R, EH::R) where R
     h,sp,l = __deduce_mass(HtoL,H,L)
     isreverse  = let
         _h,_sp,_l = kappa(HtoL) ## we expect the 3pt to have these quarks
-        _sp == sp || error("[RI] The spectator quark in HtoL is not in the correct position")
-        _h == l || _l == l || error("[RI] HtoL and L are not compatible")
-        _h == h || _l == h || error("[RI] HtoL and H are not compatible")
+        _sp == sp || error("[$F] The spectator quark in HtoL is not in the correct position")
+        _h == l || _l == l || error("[$F] HtoL and L are not compatible")
+        _h == h || _l == h || error("[$F] HtoL and H are not compatible")
         _h == l
     end ## if true, we have reverse HtoL so that it reflect the H-meson time dependence
     T = length(H.obs)
@@ -119,46 +154,17 @@ function RI(HtoL::Corr{3}, H::Corr{2}, L::Corr{2}, EL::R, EH::R) where R
     _HtoL = HtoL.obs[_r]
     _H = H.obs[_r]
     _L = L.obs[_r]
-    ## from now on we are working with physical part of the correlators
-    # println("="^80)
-    # println("Correlators with: heavy quark     =", h)
-    # println("                  spectator quark =", sp)
-    # println("                  light quark     =", l)
-    # println("                  is backward     =", isbackward)
-    # println("                  is reverse      =", isreverse)
-    # println("="^80)
     xor(isreverse, isbackward) && ( _HtoL = reverse(_HtoL))
-    !isbackward && return RI(_HtoL,_H,_L,EL,EH)
-    return RI(_HtoL,reverse(_H),reverse(_L), EL, EH)
+    !isbackward && return F(_HtoL,_H,_L,EL,EH)
+    return F(_HtoL,reverse(_H),reverse(_L), EL, EH)
 end
 
-@doc raw"""
-    RII(HtoL, H, L, EL, EH; xsink, xsrc)
-
-Compute the matrix element associated to the semileptonic decay `H -> L` using the ratio
-```math
-    R_{II}^2(t) = 2E_L \frac{HtoL(t)HtoL(x_{sink}-t)}{H(x_{sink})L(x_{sink})}
-```
-"""
-function RII(HtoL,H,L,EL,EH;xsnk::Int64,xsrc::Int64)
-    R = HtoL[xsrc:xsnk].*HtoL[xsnk:-1:xsrc]
-    R = (2*EL).*R./(H[xsnk]*L[xsnk]);
-    return sqrt.(abs.(R))  ## if Btopi is V_0, then we have a minus sign due to Time reversal times Charge conjugation. Instead of bothering with the extra check, we take the absolute value y ya está
-end
-
-@doc raw"""
-    RIII(HtoL, H, L, EL, EH; xsink, xsrc)
-
-Compute the matrix element associated to the semileptonic decay `H -> L` using the ratio from 1903.05870 eq 5.1
-```math
-    R_{III}(t) = \sqrt(2E_L) HtoL(t)/\sqrt(H(x_{sink}) L(x_{sink})) \times  \exp(\frac{x_{sink}-2t}{2} (E_H - E_L))
-```
-"""
-function RIII(HtoL,H, L, EL,EH; xsnk::Int64,xsrc::Int64)
-    R = HtoL[xsrc:xsnk] ./sqrt(abs(H[xsnk]*L[xsnk]))
-    aux2 = [exp(0.5*(EH-EL)*(xsnk-2*x+xsrc)) for x in xsrc:xsnk]
-    return sqrt(2*EL).*abs.(R) .*aux2
-end
+RI(HtoL::Corr{3}, H::Corr{2}, L::Corr{2}, EL::R, EH::R) where R =
+    _ratios(RI,HtoL,H,L,EL,EH)
+RII(HtoL::Corr{3}, H::Corr{2}, L::Corr{2}, EL::R, EH::R) where R =
+    _ratios(RII,HtoL,H,L,EL,EH)
+RIII(HtoL::Corr{3}, H::Corr{2}, L::Corr{2}, EL::R, EH::R) where R =
+    _ratios(RIII,HtoL,H,L,EL,EH)
 
 
 @doc raw"""
