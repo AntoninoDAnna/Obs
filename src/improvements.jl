@@ -166,8 +166,8 @@ See also [`sym_der`](@ref), [`Boundary`](@ref)
             """
 
 function pv_imp(pvi, pt0i,bnd::B where {B<:BC};cv)
-    der_pt = sym_der(pt[1],bnd)
-    return pv .- cv.*der_pt # we only have access to T_{0i}, but we want T_{i0}
+    der_pt = sym_der(pt0i,bnd)
+    return pvi .- cv.*der_pt # we only have access to T_{0i}, but we want T_{i0}
 end
 
 function pv_imp(pv,pt0i,pt12,pt13,pt23,bnd::B where {B<:BC}; cv,L::Int64=1,theta1, theta2)
@@ -182,7 +182,7 @@ end
 
 function pv_imp(pvi::T, pt0i::T, bnd::OBC; cv)::T where T<:AbstractCorr
     imp = pv_imp(pvi.obs[2:end-1],pt0i.obs[2:end-1],bnd,cv=cv)
-    return ObsIO.__update__(pv,obs=imp)
+    return ObsIO.__update__(pvi,obs=imp)
 end
 
 function pv_imp(pvi::T, pt0i::T, bnd::PBC; cv)::T where T<:AbstractCorr
