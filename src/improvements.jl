@@ -161,66 +161,65 @@ Compute the improved G_{PV} =  1/3 \\sum_{k=1}^3G_{PV_i} correlator according to
   - `theta1=Float64[]`: theta angle of the first quark. If empty, is read from `pv`
   - `theta2=Float64[]`: theta angles of the second quark. If empty, is read from `pv`
   - `bnd` : Boundary condition of the lattice. Used to compute the derivatives
-
+  - `real`: mandatory flag that indicate whether we are improving the real or imaginary part of ´G_{PVi}´. WARNING to improve the real (imaginary) part of ´G_{PVi}´ it is the real (imaginary) part of ´G_{PT0i}´  and the imaginary (real) part of ´G_{PTij` are required.
 See also [`sym_der`](@ref), [`Boundary`](@ref)
             """
 
-function pv_imp(pvi, pt0i,bnd::B where {B<:BC};cv)
+function pv_imp(pvi, pt0i,bnd::B where {B<:BC};cv,real::Bool)
     der_pt = sym_der(pt0i,bnd)
     return pvi .- cv.*der_pt # we only have access to T_{0i}, but we want T_{i0}
 end
 
-function pv_imp(pv,pt0i,pt12,pt13,pt23,bnd::B where {B<:BC}; cv,L::Int64=1,theta1, theta2)
-    imp = pv_imp(pv.pt01,bnd,cv=cv)
+function pv_imp(pv,pt0i,pt12,pt13,pt23,bnd::B where {B<:BC}; cv,L::Int64=1,theta1, theta2,real::Bool)
+    imp = pv_imp(pv.pt01,bnd,cv=cv,real=real)
     p = (theta1.-theta2)./L
     (all(p.==0) || all(p[2:end].==p[1]) ) && return imp
     aux  = -sin(p[1])*(pt12+pt13)
     aux +=  sin(p[2])*(pt12-pt23)
     aux +=  sin(p[3])*(pt13+pt23)
-    return pv .-cv *der_pt .- cv*aux./3
+    return real ? imp .+ cv.*aux./3 : imp .- cv.*aux./3
 end
 
-function pv_imp(pvi::T, pt0i::T, bnd::OBC; cv)::T where T<:AbstractCorr
-    imp = pv_imp(pvi.obs[2:end-1],pt0i.obs[2:end-1],bnd,cv=cv)
+function pv_imp(pvi::T, pt0i::T, bnd::OBC; cv,real::Bool)::T where T<:AbstractCorr
+    imp = pv_imp(pvi.obs[2:end-1],pt0i.obs[2:end-1],bnd,cv=cv,real=real)
     return ObsIO.__update__(pvi,obs=imp)
 end
 
-function pv_imp(pvi::T, pt0i::T, bnd::PBC; cv)::T where T<:AbstractCorr
-    imp = pv_imp(pvi.obs,pt0i.obs,bnd,cv=cv)
+function pv_imp(pvi::T, pt0i::T, bnd::PBC; cv,real::Bool)::T where T<:AbstractCorr
+    imp = pv_imp(pvi.obs,pt0i.obs,bnd,cv=cv,real=real)
     return ObsIO.__update__(pv,obs=imp)
 end
 
-function pv_imp(pv::T, pt0i::T, pt12::T, pt13::T, pt23::T, bnd::OBC; cv, L=1, theta1=nothing,theta2=nothing)::T where T<:AbstractCorr
+function pv_imp(pv::T, pt0i::T, pt12::T, pt13::T, pt23::T, bnd::OBC; cv, L=1, theta1=nothing,theta2=nothing,real::Bool)::T where T<:AbstractCorr
     isnothing(theta1) && (theta1 = theta(pv)[1])
     isnothing(theta2) && (theta2 = theta(pv)[2])
     imp =  pv_imp(pv.obs[2:end-1], pt0i.obs[2:end-1], pt12.obs[2:end-1],
                   pt13.obs[2:end-1], pt23.obs[2:end-1],bnd,
-                  cv=cv,L=L, theta1=theta1, theta2=theta2)
+                  cv=cv,L=L, theta1=theta1, theta2=theta2,real=real)
     return ObsIO.__update__(pv,obs=imp)
 end
 
-function pv_imp(pv::T, pt0i::T, pt12::T, pt13::T, pt23::T, bnd::PBC; cv, L=1, theta1=nothing,theta2=nothing)::T where T<:AbstractCorr
+function pv_imp(pv::T, pt0i::T, pt12::T, pt13::T, pt23::T, bnd::PBC; cv, L=1, theta1=nothing,theta2=nothing, real::Bool)::T where T<:AbstractCorr
     isnothing(theta1) && (theta1 = theta(pv)[1])
     isnothing(theta2) && (theta2 = theta(pv)[2])
     imp =  pv_imp(pv.obs, pt0i.obs, pt12.obs, pt13.obs, pt23.obs,bnd,
-                  cv=cv,L=L, theta1=theta1, theta2=theta2)
+                  cv=cv,L=L, theta1=theta1, theta2=theta2,real=real)
     return ObsIO.__update__(pv,obs=imp)
 end
 
 @doc raw"""
-     pv0_imp(pv0, pt...; theta1,theta2, cv,L::Int64=1, bnd::Boundary=open)
-     pv0_imp(pv0::T,pt::T ...;cv,L=1,theta1 = Float64[], theta2 = Float64[], bnd::Boundary=open)::T
+     pv0_imp(pv0, pt...; theta1,theta2, cv,L::Int64=1, bnd::Boundary=open,real::Bool)
+     pv0_imp(pv0::T,pt::T ...;cv,L=1,theta1 = Float64[], theta2 = Float64[], bnd::Boundary=open,real::Bool)::T
 
-Improve the correlator G_PV0 and G_PV0 with the tensor correlator according to the improvement equation
+Improve the correlator ´G_{PV0}´ and ´G_{PV0P}´ with the tensor correlator according to the improvement equation
 
 ```math
     V_0^I(t,\vec p) = V_0(t,\vec p) - c_V \sum_{k=1}^3 i sin(ap^k) T_{0k}(t,\vec p)
 ```
 
-
 # Arguments
-  - pvo: correlator G_{PV0}
-  - pt: correlators G_{PT}. It contains the correlator G_{PT01}, G_{PT02}, G_{PT03}
+  - pv0: correlator ´G_{PV0}´
+  - pt: correlators ´G_{PT}´. It contains the correlator ´G_{PT01}´, ´G_{PT02}´, ´G_{PT03}´
 
 # Keyword Arguments
   - `cv`: mandatory keyword argument. It is the improvement coefficient
@@ -228,29 +227,31 @@ Improve the correlator G_PV0 and G_PV0 with the tensor correlator according to t
   - `theta1=Float64[]`: theta angle of the first quark. If empty, is read from `pv`
   - `theta2=Float64[]`: theta angles of the second quark. If empty, is read from `pv`
   - `bnd` : Boundary condition of the lattice. Used to compute the derivatives
+  - `real::Bool` : mandatory flag that indicate whether we are improving the real or imaginary part of ´G_{PV0P}´. WARNING to improve the real (imaginary) part of ´G_{PV0P}´ the imaginary (real) part of ´G_{PT0iP}´ is required
 
 See also [`sym_der`](@ref), [`Boundary`](@ref)
 """
-function pv0_imp(pv0, pt01, pt02, pt03; theta1,theta2, cv,L::Int64=1)
+function pv0_imp(pv0, pt01, pt02, pt03; theta1,theta2, cv,L::Int64=1,real::Bool)
     p = (theta1.-theta2)./L
     all(p.==0) &&   return pv0
     aux = sin(p[1]).*pt01.+sin(p[2]).*pt02.+sin(p[3]).*pt03
-    return pv0.-cv.*aux
+
+    return real ? pv0.+cv.*aux : pv0.-cv.*aux
 end
 
-function pv0_imp(pv0::T, pt01::T, pt02::T, pt03::T, ::OBC;cv,L=1,theta1 = nothing, theta2 = nothing)::T where T<:AbstractCorr
+function pv0_imp(pv0::T, pt01::T, pt02::T, pt03::T, ::OBC;cv,L=1,theta1 = nothing, theta2 = nothing,real::Bool)::T where T<:AbstractCorr
     isnothing(theta1) && (theta1 = theta(pv)[1])
     isnothing(theta2) && (theta2 = theta(pv)[2])
     imp =  pv0_imp(pv0.obs[2:end-1], pt01.obs[2:end-1], pt02.obs[2:end-1],
-                   pt03.obs[2:end-1], cv=cv, L=L,theta1=theta1, theta2=theta2)
+                   pt03.obs[2:end-1], cv=cv, L=L,theta1=theta1, theta2=theta2,real = real)
     return ObsIO.__update__(pv0,obs=imp)
 end
 
 
-function pv0_imp(pv0::T, pt01::T, pt02::T, pt03::T, ::PBC;cv,L=1,theta1 = nothing, theta2 = nothing)::T where T<:AbstractCorr
+function pv0_imp(pv0::T, pt01::T, pt02::T, pt03::T, ::PBC;cv,L=1,theta1 = nothing, theta2 = nothing,real::Bool)::T where T<:AbstractCorr
     isnothing(theta1) && (theta1 = theta(pv)[1])
     isnothing(theta2) && (theta2 = theta(pv)[2])
     imp =  pv0_imp(pv0.obs, pt01.obs, pt02.obs,
-                   pt03.obs, cv=cv, L=L,theta1=theta1, theta2=theta2)
+                   pt03.obs, cv=cv, L=L,theta1=theta1, theta2=theta2,real=real)
     return ObsIO.__update__(pv0,obs=imp)
 end
