@@ -15,15 +15,18 @@ If `a0p` and/or `pp` are `AbstractCorr`, then according to `bnd` the code uses:
 
 See also [`sym_der`](@ref), [`Boundary`](@ref), [`pa0_imp`](@ref)
 """
-function mpcac(a0p,pp,bnd::B where {B<:BC})
-    der_a0p = sym_der(a0p,bnd)
+function mpcac(a0p::AbstractArray,pp::AbstractArray,::Type{BC}) where {BC<:AbstractBC}
+    der_a0p = sym_der(a0p,BC)
     return -der_a0p./(2 .*pp);
 end
 
-mpcac(a0p::T,pp::T,bnd::OBC) where T<:AbstractCorr = mpcac(a0p.obs[2:end-1], pp.obs[2:end-1],bnd)
-mpcac(a0p::T,pp::T,bnd::PBC) where T<:AbstractCorr = mpcac(a0p.obs,pp.obs)
-mpcac(a0p,pp,ca,bnd::B where {B<:BC} = OBC()) = mpcac(pa0_imp(a0p,pp,bnd,ca=ca),pp)
-mpcac(a0p,pp) = mpcac(a0p,pp,OBC())
+mpcac(a0p::Corr{2,Open,T},pp::Corr{2,Open,T}) where T =
+    mpcac(a0p.obs[2:end-1],pp.obs[2:end-1],Open)
+mpcac(a0p::Corr{2,Periodic,T},pp::Corr{2,Periodic,T}) where T =
+    mpcac(a0p.obs,pp.obs,Periodic)
+
+mpcac(a0p,pp,ca,::Type{B})  where {B<:AbstractBC} =
+    mpcac(pa0_imp(a0p,pp,BC,ca=ca),pp)
 
 @doc """
         meff(v,x0,::B where {B<:BC})
@@ -38,14 +41,16 @@ where `t=src(v)-i`.
 
 the last parameter used to discriminate between Open and Periodic Boundary conditions.
 """
-meff(v,::OBC) = log.(abs.(v[1:end-1]./v[2:end]))
-meff(v::T,bnd::OBC) where T<:AbstractCorr = meff(v.obs[2:end-1],bnd)
+meff(v,::Type{Open}) = log.(abs.(v[1:end-1]./v[2:end]))
+meff(v::T,bnd::Type{Open}) where T<:AbstractCorr =
+    meff(v.obs[2:end-1],bnd)
 
-meff(v,::PBC) = [log(abs(v[i]/v[i*length(v)+1])) for i in eachindex(v)]
-meff(v::T,bnd::PBC) where T<:AbstractCorr = meff(v.obs,bnd)
+meff(v,::Type{Periodic}) =
+    [log(abs(v[i]/v[i*length(v)+1])) for i in eachindex(v)]
+meff(v::T,bnd::Type{Periodic}) where T<:AbstractCorr = meff(v.obs,bnd)
 
-meff(v,bnd::B where {B<:BC}) = meff(v,bnd)
-meff(v) = meff(v,OBC())
+# meff(v,bnd::B where {B<:BC}) = meff(v,bnd)
+meff(v::Corr{N,BC,T}) where {N,BC<:AbstractBC,T} = meff(v,BC)
 
 @doc raw"""
     RI(HtoL::T, H::T, L::T, EL::T, EH::T) where T

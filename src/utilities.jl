@@ -4,7 +4,7 @@
 Compute the symmetryc derivative of `v` according to the boundary condition in `bnd`
 See also [`Boundary`](@ref)
 """
-function sym_der(v,::OBC)
+function sym_der(v,::Type{Open})
     res = similar(v)
     for i in 2:lastindex(res)-1
         res[i] = 0.5 * (v[i+1]-v[i-1])
@@ -14,7 +14,7 @@ function sym_der(v,::OBC)
     return res
 end
 
-function sym_der(v,::PBC)
+function sym_der(v,::Type{Periodic})
     res = similar(v)
     T = length(res)
     for i in eachindex(res)
@@ -41,7 +41,7 @@ symmetrize the correlator with respect to the source position `y0`
 
 See also [`Boundary`](@ref)
 """
-function sym_source(corr, y0, parity, ::OBC)
+function sym_source(corr, y0, parity, ::Type{Open})
     T = lastindex(corr)
     is, ie = if T == 2y0
         1,T-1
@@ -54,7 +54,7 @@ function sym_source(corr, y0, parity, ::OBC)
     return res
 end
 
-function sym_source(corr,y0,parity,::PBC)
+function sym_source(corr,y0,parity,::Type{Periodic})
     res = zeros(typeof(corr[1]),div(T,2))
     for i in eachindex(res)
         res[i] = 0.5*( corr[(y0+i-1)%T] + corr[(y0-i+1)%T] )
@@ -64,14 +64,14 @@ end
 
 sym_source(corr,y0,parity) = sym_source(corr,y0,parity,OBC())
 
-sym_source(corr::AbstractCorr,y0,parity,::OBC) = sym_source(corr.obs[2:end-1],y0,parity)
-sym_source(corr::AbstractCorr,y0,parity,::PBC) = sym_source(corr.obs,y0,parity)
+sym_source(corr::AbstractCorr,y0,parity,::Type{Open}) = sym_source(corr.obs[2:end-1],y0,parity)
+sym_source(corr::AbstractCorr,y0,parity,::Type{Periodic}) = sym_source(corr.obs,y0,parity)
 
-sym_source(corr::AbstractCorr, parity,bnd::Union{OBC,PBC}) =
-    sym_source(corr,ObsIO.src(corr),parity,bnd)
+sym_source(corr::AbstractCorr, parity,::Type{T}) where {T<:AbstractBC} =
+    sym_source(corr,ObsIO.src(corr),parity,T)
 
-sym_source(corr::AbstractCorr,parity) = sym_source(corr,ObsIO.src(corr),parity,OBC())
-
+sym_source(corr::Corr{N,BC,T},parity) where {N, BC<:AbstractBC,T} =
+    sym_source(corr,ObsIO.src(corr),parity,BC)
 
 function get_average_point(C,n)
     P = C[1].points[n]

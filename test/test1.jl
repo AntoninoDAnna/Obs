@@ -1,4 +1,4 @@
-using Obs
+using Obs, ObsIO
 
 cP  = 0.1;
 cA0 = -0.2;
@@ -10,13 +10,14 @@ mpcac = cA0/(2cP) * sinh(E);
 fps   =  abs(cA0)/sqrt(cP)*sqrt(2/E);
 
 ca = 0.02;
-pa0_ca = pa0 + ca* Obs.sym_der(pp,Obs.open);
+pa0_ca = pa0 + ca* Obs.sym_der(pp,ObsIO.Open);
 
 #improvements
 let
-    Obs.pa0_imp(pa0_ca,pp,ca=ca);
+    Obs.pa0_imp(pa0_ca,pp,Open,ca=ca);
+    Obs.pa0_imp(pa0_ca,pp,Periodic,ca=ca);
     Obs.pv_imp(pa0_ca,pp,cv=ca, theta1 = zeros(3), theta2 = zeros(3));
-    Obs.pv_imp(pa0_ca,pp,pp,pp,pp, cv=ca,theta1 = [2/3,0.0,1/3],theta2 =[0,-1,0])
+    Obs.pv_imp(pa0_ca,pp,pp,pp,pp, cv=ca, theta1 = [2/3,0.0,1/3], theta2 =[0,-1,0])
     Obs.pv0_imp(pa0_ca,pp,cv=ca,theta1 = zeros(3), theta2=zero(3),bnd=Obs.open)
     Obs.pv0_imp(pa0_ca,pp,pp,pp,cv=ca,theta1 = fill(1/3,3), theta2=zero(3),bnd=Obs.open)
     Obs.a0a0_imp(pa0_ca,0.5*pp,ca=ca)
@@ -24,6 +25,7 @@ let
     Obs.v_imp(pa0_ca,pp,pp,pp,pp,pp,pp,pp,cv=ca,theta1=fill(1/7,3),theta2=zeros(3))
     nothing
 end
+
 let
     Obs.mpcac(pa0,pp)
     Obs.meff(pa0)

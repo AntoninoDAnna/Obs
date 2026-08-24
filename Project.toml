@@ -1,7 +1,7 @@
 name = "Obs"
 uuid = "34d5995e-0b99-478d-8e2c-ce4e143535f7"
-authors = ["Antonino DAnna <antonino.danna@estudiante.uam.es>"]
 version = "0.1.0"
+authors = ["Antonino DAnna <antonino.danna@estudiante.uam.es>"]
 
 [deps]
 ADerrors = "5e92007d-7bf1-471c-8ceb-4591b8b567a9"
@@ -11,5 +11,7 @@ BitFlags = "d1d4a3ce-64b1-5f1a-9ba4-7e7e69966f35"
 ObsIO = "92b78e04-c3a5-4d37-b6f3-858be3158311"
 
 [compat]
+ADerrors = "0.1.0"
 ALPHAio = "0.4.0"
+BDIO = "0.1.0"
 ObsIO = "0.1.0"

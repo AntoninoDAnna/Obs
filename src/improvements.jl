@@ -24,21 +24,27 @@ equations
 
 See also [`sym_der`](@ref), [`Boundary`](@ref)
 """
-function v_imp(vivi,vit0i,bnd::OBC; cv)
-    T = eltype(vivi)
-    der_vt = [zero(T);sym_der(vit0i[2:end-1],bnd);zero(T)]
+function v_imp(vivi::AbstractVector{T},vit0i::AbstractVector{T},::Type{Open}; cv) where {T}
+    der_vt = [zero(T);sym_der(vit0i[2:end-1],Open);zero(T)]
     return vivi.-2cv*der_vt
 end
 
-function v_imp(vivi,vit0i,bnd::B where {B<:BC}; cv)
-    der_vt = sym_der(vit0i,bnd)
+function v_imp(vivi::AbstractVector{T},vit0i::AbstractVector{T},::Type{Periodic}; cv) where {T}
+    der_vt = sym_der(vit0i,Periodic)
     return vivi.-2cv*der_vt
 end
 
-function v_imp(vivi, vit0i, v1t12, v1t13, v2t12, v2t23, v3t13, v3t23,bnd::B where {B<:BC};
-               cv,L=1,theta1,thet2)
+function v_imp(vivi::AbstractVector{T},
+               vit0i::AbstractVector{T},
+               v1t12::AbstractVector{T},
+               v1t13::AbstractVector{T},
+               v2t12::AbstractVector{T},
+               v2t23::AbstractVector{T},
+               v3t13::AbstractVector{T},
+               v3t23::AbstractVector{T}, ::Type{B};
+               cv,L=1,theta1,thet2) where {T, B<:AbstractBC}
     p = (theta1.-theta2)/L
-    imp = v_imp(vivi,vit0i,bnd,cv=cv)
+    imp = v_imp(vivi,vit0i,B,cv=cv)
     all(pp==0 for pp in p) && return imp
     aux = -sin(p[1]).*(v2t12.+v3t13).+
         sin(p[2]).*(v1t12.-v3t23).+
@@ -46,42 +52,42 @@ function v_imp(vivi, vit0i, v1t12, v1t13, v2t12, v2t23, v3t13, v3t23,bnd::B wher
     return imp .-2cv*aux
 end
 
-function v_imp(vivi::T, vit0i::T, bnd::OBC;cv)::T where T<: AbstractCorr
-    imp = v_imp(vivi.obs[2:end-1],vit0i.obs[2:end-1],bnd,cv=cv)
-    return ObsIO.__update__(vv,obs=imp)
-end
-
-function v_imp(vivi::T, vit0i::T, bnd::PBC;cv)::T where T<: AbstractCorr
-    imp =v_imp(vivi.obs,vit0i.obs,bnd,cv=cv)
+function v_imp(vivi::T, vit0i::T, ::Type{B};cv)::T where {T<: AbstractCorr, B<:AbstractBC}
+    imp =v_imp(vivi.obs,vit0i.obs,B,cv=cv)
     return ObsIO.__update__(vv,obs=imp)
 end
 
 function v_imp(vivi::T, vit0i::T, v1t12::T,
                v1t13::T, v2t12::T, v2t23::T,
-               v3t13::T, v3t23::T,bnd::OBC;
-               cv,L=1,theta1=nothing,theta2=nothing)::T where T<: AbstractCorr
-
-    isnothing(theta1) && (theta1 = theta(vv)[1])
-    isnothing(theta2) && (theta2 = theta(vv)[2])
+               v3t13::T, v3t23::T,::Type{BC};
+               cv,L=1,theta1=nothing,theta2=nothing)::T where {T<: AbstractCorr, BC<:AbstractBC}
+    isnothing(theta1) && (theta1 = theta(vivi)[1])
+    isnothing(theta2) && (theta2 = theta(vivi)[2])
     imp = v_imp(vivi.obs, vit0i.obs,
                 v1t12.obs,v1t13.obs,
                 v2t12.obs,v2t23.obs,
-                v3t13.obs,v3t23.obs,bnd,
+                v3t13.obs,v3t23.obs,BC,
                 cv=cv,L=L,theta1=theta1,theta2=theta2)
     return ObsIO.__update__(vv,obs=imp)
 end
 
-function v_imp(vivi::T, vit0i::T, v1t12::T,
-               v1t13::T, v2t12::T, v2t23::T,
-               v3t13::T, v3t23::T,bnd::PBC;
-               cv,L=1,theta1=nothing,theta2=nothing)::T where T<: AbstractCorr
+function v_imp(vivi::Corr{N,B,T}, vit0i::Corr{N,B,T}; cv) where {N, B<:AbstractBC,T}
+    imp =v_imp(vivi.obs,vit0i.obs,B,cv=cv)
+    return ObsIO.__update__(vivi,obs=imp)
+end
 
-    isnothing(theta1) && (theta1 = theta(vv)[1])
-    isnothing(theta2) && (theta2 = theta(vv)[2])
+function v_imp(vivi::Corr{N,B,T}, vit0i::Corr{N,B,T},
+               v1t12::Corr{N,B,T},
+               v1t13::Corr{N,B,T}, v2t12::Corr{N,B,T},
+               v2t23::Corr{N,B,T},
+               v3t13::Corr{N,B,T}, v3t23::Corr{N,B,T},
+               cv, L=1, theta1=nothing, theta2=nothing) where {N, B<:AbstractBC,T}
+    isnothing(theta1) && (theta1 = theta(vivi)[1])
+    isnothing(theta2) && (theta2 = theta(vivi)[2])
     imp = v_imp(vivi.obs, vit0i.obs,
                 v1t12.obs,v1t13.obs,
                 v2t12.obs,v2t23.obs,
-                v3t13.obs,v3t23.obs,bnd,
+                v3t13.obs,v3t23.obs,B,
                 cv=cv,L=L,theta1=theta1,theta2=theta2)
     return ObsIO.__update__(vv,obs=imp)
 end
@@ -101,25 +107,24 @@ Improve the correlator G_{PA_0} according to the equation
 
 See also [`sym_der`](@ref), [`Boundary`](@ref)
 """
-function pa0_imp(pa0, pp,bnd::OBC; ca)
-    T = eltype(pa0)
-    der_p= [zero(T);sym_det(pp[2:end-1],bnd);zero(T)]
+function pa0_imp(pa0::AbstractVector{T}, pp::AbstractVector{T},::Type{Open}; ca) where T
+    der_p= [zero(T); sym_der(pp[2:end-1],Open); zero(T)]
     return pa0.-ca.*der_p
 end
 
-function pa0_imp(pa0, pp,bnd::B where {B<:BC}; ca)
-    der_p=sym_der(pp,bnd)
+function pa0_imp(pa0, pp,::Type{Periodic}; ca)
+    der_p=sym_der(pp,Periodic)
     return pa0.-ca.*der_p
 end
 
 
-function pa0_imp(pa0::T, pp::T, bnd::OBC; ca)::T where T<:AbstractCorr
-    imp = pa0_imp(pa0.obs,pp.obs,bnd,ca=ca)
-    return ObsIO.__update__(pa0,obs=[_zero;imp;_zero])
+function pa0_imp(pa0::T, pp::T, ::Type{B}; ca)::T where {T<:AbstractCorr, B<:AbstractBC}
+    imp = pa0_imp(pa0.obs,pp.obs,B,ca=ca)
+    return ObsIO.__update__(pa0,obs=imp)
 end
 
-function pa0_imp(pa0::T,pp::T,bnd::PBC;ca)::T where T<:AbstractCorr
-    imp = pa0_imp(pa0.obs,pp.obs,bnd,ca=ca,)
+function pa0_imp(pa0::Corr{N,B,T}, pp::Corr{N,B,T};ca) where {N,B<:AbstractBC,T}
+     imp = pa0_imp(pa0.obs,pp.obs,B,ca=ca)
     return ObsIO.__update__(pa0,obs=imp)
 end
 
@@ -137,24 +142,23 @@ Improve the correlator G_{A_0 A_0} according to the equation
 
 See also [`sym_der`](@ref), [`Boundary`](@ref)
 """
-function a0a0_imp(a0a0, pa0, bnd::OBC; ca)
-    T = eltype(a0a0)
-    der_pa0 = [zero(T);sym_der(pa0[2:end-1],bnd); zero(T)]
+function a0a0_imp(a0a0::AbstractVector{T}, pa0::AbstractVector{T}, ::Type{Open}; ca) where T
+    der_pa0 = [zero(T);sym_der(pa0[2:end-1],Open); zero(T)]
     return a0a0 .- (2*ca).*der_pa0
 end
 
-function a0a0_imp(a0a0, pa0, bnd::B where {B<:BC}; ca)
-    der_pa0 = sym_der(pa0,bnd)
+function a0a0_imp(a0a0::AbstractVector{T}, pa0::AbstractVector{T}, ::Type{Periodic}; ca) where T
+    der_pa0 = sym_der(pa0,Periodic)
     return a0a0 .- (2*ca).*der_pa0
 end
 
-function a0a0_imp(a0a0::T, pa0::T,bnd::OBC; ca )::T where T<:AbstractCorr
-    imp = a0a0_imp(a0a0.obs,pa0.obs,bnd,ca=ca)
+function a0a0_imp(a0a0::T, pa0::T,::Type{B}; ca) where{ T<:AbstractCorr, B<:AbstractBC}
+    imp = a0a0_imp(a0a0.obs,pa0.obs,B,ca=ca)
     return ObsIO.__update__(a0a0,obs=imp)
 end
 
-function a0a0_imp(a0a0::T, pa0::T,bnd::PBC; ca )::T where T<:AbstractCorr
-    imp = a0a0_imp(a0a0.obs,pa0.obs,bnd,ca=ca)
+function a0a0_imp(a0a0::Corr{N,B,T}, pa0::Corr{N,B,T}; ca ) where{N,B<:AbstractBC,T}
+    imp = a0a0_imp(a0a0.obs,pa0.obs,B,ca=ca)
     return ObsIO.__update__(a0a0,obs=imp)
 end
 
@@ -183,19 +187,19 @@ Compute the improved G_{PV} =  1/3 \\sum_{k=1}^3G_{PV_i} correlator according to
 See also [`sym_der`](@ref), [`Boundary`](@ref)
             """
 
-function pv_imp(pvi, pt0i,bnd::OBC; cv,real::Bool)
+function pv_imp(pvi, pt0i,::Type{Open}; cv,real::Bool)
     T = eltype(pvi)
-    der_pt = [zero(T);sym_der(pt0i[2:end-1],bnd); zero(T)]
+    der_pt = [zero(T);sym_der(pt0i[2:end-1],Open); zero(T)]
     return pvi .- cv.*der_pt # we only have access to T_{0i}, but we want T_{i0}
 end
 
-function pv_imp(pvi, pt0i,bnd::B where {B<:BC};cv,real::Bool)
-    der_pt = sym_der(pt0i,bnd)
+function pv_imp(pvi, pt0i,::Type{Periodic};cv,real::Bool)
+    der_pt = sym_der(pt0i,Periodic)
     return pvi .- cv.*der_pt # we only have access to T_{0i}, but we want T_{i0}
 end
 
-function pv_imp(pv,pt0i,pt12,pt13,pt23,bnd::B where {B<:BC}; cv,L::Int64=1,theta1, theta2,real::Bool)
-    imp = pv_imp(pv.pt01,bnd,cv=cv,real=real)
+function pv_imp(pv,pt0i,pt12,pt13,pt23,::Type{B}; cv,L::Int64=1,theta1, theta2,real::Bool) where {B<:AbstractBC}
+    imp = pv_imp(pv.pt01,B,cv=cv,real=real)
     p = (theta1.-theta2)./L
     (all(p.==0) || all(p[2:end].==p[1]) ) && return imp
     aux  = -sin(p[1])*(pt12+pt13)
@@ -204,32 +208,35 @@ function pv_imp(pv,pt0i,pt12,pt13,pt23,bnd::B where {B<:BC}; cv,L::Int64=1,theta
     return real ? imp .+ cv.*aux./3 : imp .- cv.*aux./3
 end
 
-function pv_imp(pvi::T, pt0i::T, bnd::OBC; cv,real::Bool)::T where T<:AbstractCorr
-    imp = pv_imp(pvi.obs,pt0i.obs,bnd,cv=cv,real=real)
+function pv_imp(pvi::T, pt0i::T, ::Type{B}; cv,real::Bool)::T where {T<:AbstractCorr,B<:AbstractBC}
+    imp = pv_imp(pvi.obs,pt0i.obs,B,cv=cv,real=real)
     return ObsIO.__update__(pvi,obs=imp)
 end
 
-function pv_imp(pvi::T, pt0i::T, bnd::PBC; cv,real::Bool)::T where T<:AbstractCorr
-    imp = pv_imp(pvi.obs,pt0i.obs,bnd,cv=cv,real=real)
-    return ObsIO.__update__(pv,obs=imp)
-end
-
-function pv_imp(pv::T, pt0i::T, pt12::T, pt13::T, pt23::T, bnd::OBC; cv, L=1, theta1=nothing,theta2=nothing,real::Bool)::T where T<:AbstractCorr
+function pv_imp(pv::T, pt0i::T, pt12::T, pt13::T, pt23::T, ::Type{B}; cv, L=1, theta1=nothing,theta2=nothing,real::Bool)::T where {T<:AbstractCorr, B<:AbstractBC}
     isnothing(theta1) && (theta1 = theta(pv)[1])
     isnothing(theta2) && (theta2 = theta(pv)[2])
     imp =  pv_imp(pv.obs, pt0i.obs, pt12.obs,
-                  pt13.obs, pt23.obs,bnd,
+                  pt13.obs, pt23.obs,B,
                   cv=cv,L=L, theta1=theta1, theta2=theta2,real=real)
     return ObsIO.__update__(pv,obs=imp)
 end
 
-function pv_imp(pv::T, pt0i::T, pt12::T, pt13::T, pt23::T, bnd::PBC; cv, L=1, theta1=nothing,theta2=nothing, real::Bool)::T where T<:AbstractCorr
+
+function pv_imp(pv::Corr{N,B,T}, pt0i::Corr{N,B,T}, pt12::Corr{N,B,T}, pt13::Corr{N,B,T}, pt23::Corr{N,B,T}; cv, L=1, theta1=nothing,theta2=nothing,real::Bool) where {N,B<:AbstractBC,T}
     isnothing(theta1) && (theta1 = theta(pv)[1])
     isnothing(theta2) && (theta2 = theta(pv)[2])
-    imp =  pv_imp(pv.obs, pt0i.obs, pt12.obs, pt13.obs, pt23.obs,bnd,
+    imp =  pv_imp(pv.obs, pt0i.obs, pt12.obs,
+                  pt13.obs, pt23.obs,B,
                   cv=cv,L=L, theta1=theta1, theta2=theta2,real=real)
     return ObsIO.__update__(pv,obs=imp)
 end
+
+function pv_imp(pvi::Corr{N,B,T}, pt0i::Corr{N,B,T}; cv,real::Bool) where {N,B<:AbstractBC,T}
+    imp = pv_imp(pvi.obs,pt0i.obs,B,cv=cv,real=real)
+    return ObsIO.__update__(pvi,obs=imp)
+end
+
 
 @doc raw"""
      pv0_imp(pv0, pt...; theta1,theta2, cv,L::Int64=1, bnd::Boundary=open,real::Bool)
@@ -263,7 +270,7 @@ function pv0_imp(pv0, pt01, pt02, pt03; theta1,theta2, cv,L::Int64=1,real::Bool)
     return real ? pv0.+cv.*aux : pv0.-cv.*aux
 end
 
-function pv0_imp(pv0::T, pt01::T, pt02::T, pt03::T, ::OBC;cv,L=1,theta1 = nothing, theta2 = nothing,real::Bool)::T where T<:AbstractCorr
+function pv0_imp(pv0::T, pt01::T, pt02::T, pt03::T, ::Type{B}; cv,L=1,theta1 = nothing, theta2 = nothing,real::Bool)::T where {T<:AbstractCorr, B<:AbstractBC}
     isnothing(theta1) && (theta1 = theta(pv0)[1])
     isnothing(theta2) && (theta2 = theta(pv0)[2])
     imp =  pv0_imp(pv0.obs, pt01.obs, pt02.obs,
@@ -271,11 +278,10 @@ function pv0_imp(pv0::T, pt01::T, pt02::T, pt03::T, ::OBC;cv,L=1,theta1 = nothin
     return ObsIO.__update__(pv0,obs=imp)
 end
 
-
-function pv0_imp(pv0::T, pt01::T, pt02::T, pt03::T, ::PBC;cv,L=1,theta1 = nothing, theta2 = nothing,real::Bool)::T where T<:AbstractCorr
-    isnothing(theta1) && (theta1 = theta(pv)[1])
-    isnothing(theta2) && (theta2 = theta(pv)[2])
+function pv0_imp(pv0::Corr{N,B,T}, pt01::Corr{N,B,T}, pt02::Corr{N,B,T}, pt03::Corr{N,B,T}; cv,L=1,theta1 = nothing, theta2 = nothing,real::Bool) where {N, B<:AbstractBC,T}
+    isnothing(theta1) && (theta1 = theta(pv0)[1])
+    isnothing(theta2) && (theta2 = theta(pv0)[2])
     imp =  pv0_imp(pv0.obs, pt01.obs, pt02.obs,
-                   pt03.obs, cv=cv, L=L,theta1=theta1, theta2=theta2,real=real)
+                   pt03.obs, cv=cv, L=L,theta1=theta1, theta2=theta2,real = real)
     return ObsIO.__update__(pv0,obs=imp)
 end
