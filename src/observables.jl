@@ -46,7 +46,7 @@ meff(v::T,bnd::Type{Open}) where T<:AbstractCorr =
     meff(v.obs[2:end-1],bnd)
 
 meff(v,::Type{Periodic}) =
-    [log(abs(v[i]/v[i*length(v)+1])) for i in eachindex(v)]
+    [log(abs(v[i]/v[i%length(v)+1])) for i in eachindex(v)]
 meff(v::T,bnd::Type{Periodic}) where T<:AbstractCorr = meff(v.obs,bnd)
 
 # meff(v,bnd::B where {B<:BC}) = meff(v,bnd)
