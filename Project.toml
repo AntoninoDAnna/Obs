@@ -11,7 +11,7 @@ BitFlags = "d1d4a3ce-64b1-5f1a-9ba4-7e7e69966f35"
 ObsIO = "92b78e04-c3a5-4d37-b6f3-858be3158311"
 
 [compat]
-ADerrors = "0.1.0"
+ADerrors = "0.1.0 - 1"
 ALPHAio = "0.4.0"
 BDIO = "0.1.0"
 ObsIO = "0.1.0"
