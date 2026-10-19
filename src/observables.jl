@@ -41,7 +41,8 @@ where `t=src(v)-i`.
 
 the last parameter used to discriminate between Open and Periodic Boundary conditions.
 """
-meff(v,::Type{Open}) = log.(abs.(v[1:end-1]./v[2:end]))
+meff(v) = log.(abs.(v[1:end-1]./v[2:end]))
+meff(v,::Type{Open}) = meff(v)
 meff(v::T,bnd::Type{Open}) where T<:AbstractCorr =
     meff(v.obs[2:end-1],bnd)
 

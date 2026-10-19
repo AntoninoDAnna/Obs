@@ -55,17 +55,17 @@ function sym_source(corr, y0, parity, ::Type{Open})
 end
 
 function sym_source(corr,y0,parity,::Type{Periodic})
+    T = length(corr)
     res = zeros(typeof(corr[1]),div(T,2))
-    for i in eachindex(res)
-        res[i] = 0.5*( corr[(y0+i-1)%T] + corr[(y0-i+1)%T] )
+    y0 = y0+1
+    for i in eachindex(res).-1
+        res[i+1] = 0.5*( corr[mod(y0+i-1,T)+1] + parity*corr[mod(y0-i-1,T)+1] )
     end
     return res
 end
 
-sym_source(corr,y0,parity) = sym_source(corr,y0,parity,OBC())
-
-sym_source(corr::AbstractCorr,y0,parity,::Type{Open}) = sym_source(corr.obs[2:end-1],y0,parity)
-sym_source(corr::AbstractCorr,y0,parity,::Type{Periodic}) = sym_source(corr.obs,y0,parity)
+sym_source(corr::AbstractCorr,y0,parity,::Type{Open}) = sym_source(corr.obs[2:end-1],y0,parity,Open)
+sym_source(corr::AbstractCorr,y0,parity,::Type{Periodic}) = sym_source(corr.obs,y0,parity,Periodic)
 
 sym_source(corr::AbstractCorr, parity,::Type{T}) where {T<:AbstractBC} =
     sym_source(corr,ObsIO.src(corr),parity,T)
