@@ -124,14 +124,14 @@ The function returns a `Corr{N}` with gamma structure replace as follow:
   - G5G1,G5G2,G5G3 -> G5Gi
   - G1G2, G1G3, G2G3 -> GiGj
 """
-function average_corr(C::ObsIO.Corr{N}...) where N
+function average_corr(C::ObsIO.Corr{N,BC,T}...) where {N,BC<:AbstractBC,T}
     Nc = length(C)
     f(n)  = get_average_point(C,n)
     pts = ntuple(f,N)
     g(n) = get_averaged_prop(C,pts,n)
     prp = ntuple(g,N)
     obs = reduce(+,getfield.(C,:obs))./Nc
-    return ObsIO.Corr(obs,pts,prp)
+    return ObsIO.Corr(obs,pts,prp,BC)
 end
 
 
