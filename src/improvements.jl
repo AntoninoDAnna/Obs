@@ -270,6 +270,13 @@ function pv0_imp(pv0, pt01, pt02, pt03; theta1,theta2, cv,L::Int64=1,real::Bool)
     return real ? pv0.+cv.*aux : pv0.-cv.*aux
 end
 
+function pv0_imp(pv0, pt0i; theta1::Real,theta2::Real, cv,L::Int64=1,real::Bool)
+    p = (theta1-theta2)/L
+    p==0 && return pv0
+    aux = sin(p[1]).*pt0i
+    return real ? pv0.+cv.*aux : pv0.-cv.*aux
+end
+
 function pv0_imp(pv0::T, pt01::T, pt02::T, pt03::T, ::Type{B}; cv,L=1,theta1 = nothing, theta2 = nothing,real::Bool)::T where {T<:AbstractCorr, B<:AbstractBC}
     isnothing(theta1) && (theta1 = theta(pv0)[1])
     isnothing(theta2) && (theta2 = theta(pv0)[2])
@@ -283,5 +290,15 @@ function pv0_imp(pv0::Corr{N,B,T}, pt01::Corr{N,B,T}, pt02::Corr{N,B,T}, pt03::C
     isnothing(theta2) && (theta2 = theta(pv0)[2])
     imp =  pv0_imp(pv0.obs, pt01.obs, pt02.obs,
                    pt03.obs, cv=cv, L=L,theta1=theta1, theta2=theta2,real = real)
+    return ObsIO.__update__(pv0,obs=imp)
+end
+
+function pv0_imp(pv0::Corr{N,B,T}, pt0i::Corr{N,B,T}; cv, L=1, theta1 = nothing, theta2 = nothing,real::Bool) where {N, B<:AbstractBC,T}
+    isnothing(theta1) && (theta1 = theta(pv0)[1])
+    isnothing(theta2) && (theta2 = theta(pv0)[2])
+    if any(theta1[1]-theta2[1].!= theta1.-theta2)
+        error("[pv0_imp]: Cannot use T0i correlator. p_i != p_j. Use T01, T02 and T03")
+    end
+    imp =  pv0_imp(pv0.obs, pt0i.obs, cv=cv, L=L,theta1=theta1[1], theta2=theta2[2],real = real)
     return ObsIO.__update__(pv0,obs=imp)
 end

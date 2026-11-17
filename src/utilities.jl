@@ -17,12 +17,11 @@ end
 function sym_der(v,::Type{Periodic})
     res = similar(v)
     T = length(res)
-    for i in eachindex(res)
-        res[i] = 0.5 * (v[i%T+1]-v[(i-T-2)%T+1])
+    for i in eachindex(v)
+        res[i] = 0.5 * (v[mod1(i+1, T)] - v[mod1(i-1, T)])
     end
     return res
 end
-
 
 @doc raw"""
     sym_source(corr, y0, parity, bnd::Boundary = open)
