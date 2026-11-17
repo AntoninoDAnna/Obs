@@ -115,7 +115,7 @@ end
 read the quark masses in the correlators and deduce the quark contents.
 It returns a tuple with `(h,sp,l)` where `h` is the heavy quark mass, `sp` is the specator quark and `l` is the light quark.
 "
-function __deduce_mass(HtoL::Corr{3}, H::Corr{2}, L::Corr{2})
+function __deduce_mass(HtoL::Corr{3,BC,T}, H::Corr{2,BC,T}, L::Corr{2,BC,T}) where {BC<:AbstractBC,T}
     function get_sp(kappa, (h1,h2), (l1,l2))
         for k in kappa
             if ((k == h1) || (k == h2)) && ((k == l1) || (k==l2))
@@ -136,7 +136,7 @@ function __deduce_mass(HtoL::Corr{3}, H::Corr{2}, L::Corr{2})
     return h,sp,l
 end
 
-function _ratios(F::Function, HtoL::Corr{3}, H::Corr{2},
+function _ratios(F::Function, HtoL::Corr{3,}, H::Corr{2},
                 L::Corr{2}, EL::R, EH::R) where R
     # We expect the correlators to have the following mass content:
     # HtoL : (h,ls,l) where ls is the spectator quark
@@ -165,11 +165,11 @@ function _ratios(F::Function, HtoL::Corr{3}, H::Corr{2},
     return F(_HtoL,reverse(_H),reverse(_L), EL, EH)
 end
 
-RI(HtoL::Corr{3}, H::Corr{2}, L::Corr{2}, EL::R, EH::R) where R =
+RI(HtoL::Corr{3,BC,R}, H::Corr{2,BC,R}, L::Corr{2,BC,R}, EL::R, EH::R) where {BC<:AbstractBC,R} =
     _ratios(RI,HtoL,H,L,EL,EH)
-RII(HtoL::Corr{3}, H::Corr{2}, L::Corr{2}, EL::R, EH::R) where R =
+RII(HtoL::Corr{3,BC,R}, H::Corr{2,BC,R}, L::Corr{2,BC,R}, EL::R, EH::R) where {BC<:AbstractBC,R} =
     _ratios(RII,HtoL,H,L,EL,EH)
-RIII(HtoL::Corr{3}, H::Corr{2}, L::Corr{2}, EL::R, EH::R) where R =
+RIII(HtoL::Corr{3,BC,R}, H::Corr{2,BC,R}, L::Corr{2,BC,R}, EL::R, EH::R) where {BC<:AbstractBC,R} =
     _ratios(RIII,HtoL,H,L,EL,EH)
 
 
